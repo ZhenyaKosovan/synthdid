@@ -13,7 +13,10 @@ Description: Estimate average treatment effects in panel data.
 Depends:
     R (>= 3.4)
 Imports:
-    mvtnorm
+    mvtnorm,
+    Rcpp
+LinkingTo:
+    Rcpp
 License: GPL (>= 2) | BSD_3_clause + file LICENSE
 Encoding: UTF-8
 LazyData: true
