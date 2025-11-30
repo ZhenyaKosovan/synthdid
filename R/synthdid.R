@@ -1,7 +1,10 @@
 #' A function mapping a numeric vector to a (presumably sparser) numeric vector of the same shape to
 #' be passed onto synthdid_estimate.
 #' @param v a vector
-sparsify_function = function(v) { v[v <= max(v)/4] = 0; v/sum(v) }
+sparsify_function <- function(v) {
+  v[v <= max(v) / 4] <- 0
+  v / sum(v)
+}
 
 #' Computes the synthetic diff-in-diff estimate for an average treatment effect on a treated block.
 #'
@@ -158,14 +161,14 @@ synthdid_placebo = function(estimate, treated.fraction = NULL) {
 #' Outputs the effect curve that was averaged to produce our estimate
 #' @param estimate, as output by synthdid_estimate
 #' @export synthdid_effect_curve
-synthdid_effect_curve = function(estimate) {
-  setup = attr(estimate, 'setup')
-  weights = attr(estimate, 'weights')
-  X.beta = contract3(setup$X, weights$beta)
-  N1 = nrow(setup$Y) - setup$N0
-  T1 = ncol(setup$Y) - setup$T0
+synthdid_effect_curve <- function(estimate) {
+  setup <- attr(estimate, "setup")
+  weights <- attr(estimate, "weights")
+  X.beta <- contract3(setup$X, weights$beta)
+  N1 <- nrow(setup$Y) - setup$N0
+  T1 <- ncol(setup$Y) - setup$T0
 
-  tau.sc = t(c(-weights$omega, rep(1 / N1, N1))) %*% (setup$Y - X.beta)
-  tau.curve = tau.sc[setup$T0 + (1:T1)] - c(tau.sc[1:setup$T0] %*% weights$lambda)
+  tau.sc <- t(c(-weights$omega, rep(1 / N1, N1))) %*% (setup$Y - X.beta)
+  tau.curve <- tau.sc[setup$T0 + (1:T1)] - c(tau.sc[1:setup$T0] %*% weights$lambda)
   tau.curve
 }
