@@ -9,3 +9,4 @@
 ^pkgdown$
 ^DEVELOPING\.md$
 ^data/README\.md$
+^\.github$

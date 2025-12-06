@@ -1,6 +1,8 @@
 # synthdid: Synthetic Difference in Differences Estimation
-
-[![Build Status](https://dev.azure.com/grf-labs/synth-inference/_apis/build/status/synth-inference.synthdid?branchName=master)](https://dev.azure.com/grf-labs/synth-inference/_build/latest?definitionId=4&branchName=master)
+ <!-- badges: start -->
+  [![R-CMD-check](https://github.com/ZhenyaKosovan/synthdid/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/ZhenyaKosovan/synthdid/actions/workflows/R-CMD-check.yaml)
+  [![Codecov test coverage](https://codecov.io/gh/ZhenyaKosovan/synthdid/graph/badge.svg)](https://app.codecov.io/gh/ZhenyaKosovan/synthdid)
+  <!-- badges: end -->
 
 This package implements the synthetic difference in difference estimator (SDID) for the average treatment effect in panel data,
 as proposed in Arkhangelsky et al (2019). We observe matrices of outcomes Y and binary treatment indicators W
