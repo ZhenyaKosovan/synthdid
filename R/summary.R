@@ -34,8 +34,16 @@ synthdid_controls = function(estimates, sort.by = 1, mass = .9, weight.type = 'o
 summary.synthdid_estimate = function(object, weight.digits=3, fast=FALSE, ...) {
   N0 = attr(object, 'setup')$N0
   T0 = attr(object, 'setup')$T0
+  desired_method = if (fast) { "jackknife" } else { "bootstrap" }
+  se_attr = attr(object, "se")
+  se_method = attr(object, "se_method")
+  se_val = if (!is.null(se_attr) && !is.null(se_method) && se_method == desired_method) {
+    se_attr
+  } else {
+    sqrt(vcov(object, method = desired_method))
+  }
   list(estimate = c(object),
-    se = sqrt(if(fast) { vcov(object, method = 'jackknife') } else { vcov(object) }),
+    se = se_val,
     controls = round(synthdid_controls(object, weight.type='omega'),  digits=weight.digits),
     periods  = round(synthdid_controls(object, weight.type='lambda'), digits=weight.digits),
     dimensions = c( N1 = nrow(Y(object))-N0, N0 = N0, N0.effective = round(1 / sum(omega(object)^2),  weight.digits),

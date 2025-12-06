@@ -1,13 +1,9 @@
 contract3 <- function(X, v) {
   stopifnot(length(dim(X)) == 3, dim(X)[3] == length(v))
-  out <- array(0, dim = dim(X)[1:2])
   if (length(v) == 0) {
-    return(out)
+    return(array(0, dim = dim(X)[1:2]))
   }
-  for (ii in 1:length(v)) {
-    out <- out + v[ii] * X[, , ii]
-  }
-  return(out)
+  contract3_cpp(X, v)
 }
 
 # a Frank-Wolfe solver for synthetic control weights using exact line search
@@ -85,10 +81,15 @@ sc.weight.fw.covariates <- function(Y,
     grad.beta <- -if (dim(X)[3] == 0) {
       c()
     } else {
-      apply(X, 3, function(Xi) {
-        t(weights$err.lambda) %*% Xi[1:N0, ] %*% c(weights$lambda, -1) / N0 +
-          t(weights$err.omega) %*% t(Xi[, 1:T0]) %*% c(weights$omega, -1) / T0
-      })
+      grad_beta_cpp(
+        X,
+        weights$lambda,
+        weights$omega,
+        weights$err.lambda,
+        weights$err.omega,
+        N0,
+        T0
+      )
     }
 
     alpha <- 1 / t
@@ -123,14 +124,12 @@ update.weights <- function(Y,
                            zeta.lambda,
                            zeta.omega) {
   Y.lambda <- if (lambda.intercept) {
-    apply(Y[1:N0, ], 2, function(row) {
-      row - mean(row)
-    })
+    sweep(Y[1:N0, ], 2, colMeans(Y[1:N0, ]))
   } else {
     Y[1:N0, ]
   }
   if (update.lambda) {
-    lambda <- fw.step(
+    lambda <- fw_step_cpp(
       Y.lambda[, 1:T0],
       lambda,
       Y.lambda[, T0 + 1],
@@ -140,14 +139,12 @@ update.weights <- function(Y,
   err.lambda <- Y.lambda %*% c(lambda, -1)
 
   Y.omega <- if (omega.intercept) {
-    apply(t(Y[, 1:T0]), 2, function(row) {
-      row - mean(row)
-    })
+    sweep(t(Y[, 1:T0]), 2, colMeans(t(Y[, 1:T0])))
   } else {
     t(Y[, 1:T0])
   }
   if (update.omega) {
-    omega <- fw.step(Y.omega[, 1:N0], omega, Y.omega[, N0 + 1], T0 * Re(zeta.omega^2))
+    omega <- fw_step_cpp(Y.omega[, 1:N0], omega, Y.omega[, N0 + 1], T0 * Re(zeta.omega^2))
   }
   err.omega <- Y.omega %*% c(omega, -1)
 

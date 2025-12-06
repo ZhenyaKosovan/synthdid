@@ -37,12 +37,13 @@ If we didn't, the plots wouldn't show have standard errors.
 ```{r}
 data('california_prop99')
 setup = panel.matrices(california_prop99)
+
 tau.hat = synthdid_estimate(setup$Y, setup$N0, setup$T0)
 
 tau.hat
 print(summary(tau.hat))
 
-se = sqrt(vcov(tau.hat, method='placebo'))
+se = sqrt(vcov(tau.hat, method = 'placebo'))
 sprintf('point estimate: %1.2f', tau.hat)
 sprintf('95%% CI (%1.2f, %1.2f)', tau.hat - 1.96 * se, tau.hat + 1.96 * se)
 ```

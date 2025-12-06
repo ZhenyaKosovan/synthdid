@@ -5,6 +5,7 @@ using namespace Rcpp;
 
 
 
+// [[Rcpp::export]]
 NumericVector fw_step_cpp(const NumericMatrix& A,
                           const NumericVector& x,
                           const NumericVector& b,

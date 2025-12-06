@@ -10,6 +10,21 @@ Rcpp::Rostream<true>&  Rcpp::Rcout = Rcpp::Rcpp_cout_get();
 Rcpp::Rostream<false>& Rcpp::Rcerr = Rcpp::Rcpp_cerr_get();
 #endif
 
+// fw_step_cpp
+NumericVector fw_step_cpp(const NumericMatrix& A, const NumericVector& x, const NumericVector& b, const double eta, const Rcpp::Nullable<double> alpha);
+RcppExport SEXP _synthdid_fw_step_cpp(SEXP ASEXP, SEXP xSEXP, SEXP bSEXP, SEXP etaSEXP, SEXP alphaSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< const NumericMatrix& >::type A(ASEXP);
+    Rcpp::traits::input_parameter< const NumericVector& >::type x(xSEXP);
+    Rcpp::traits::input_parameter< const NumericVector& >::type b(bSEXP);
+    Rcpp::traits::input_parameter< const double >::type eta(etaSEXP);
+    Rcpp::traits::input_parameter< const Rcpp::Nullable<double> >::type alpha(alphaSEXP);
+    rcpp_result_gen = Rcpp::wrap(fw_step_cpp(A, x, b, eta, alpha));
+    return rcpp_result_gen;
+END_RCPP
+}
 // sc_weight_fw_cpp
 List sc_weight_fw_cpp(NumericMatrix Y, const double zeta, const bool intercept, NumericVector lambda, const double min_decrease, const int max_iter);
 RcppExport SEXP _synthdid_sc_weight_fw_cpp(SEXP YSEXP, SEXP zetaSEXP, SEXP interceptSEXP, SEXP lambdaSEXP, SEXP min_decreaseSEXP, SEXP max_iterSEXP) {
@@ -26,9 +41,41 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// grad_beta_cpp
+NumericVector grad_beta_cpp(const NumericVector& X, const NumericVector& lambda, const NumericVector& omega, const NumericVector& err_lambda, const NumericVector& err_omega, const int N0, const int T0);
+RcppExport SEXP _synthdid_grad_beta_cpp(SEXP XSEXP, SEXP lambdaSEXP, SEXP omegaSEXP, SEXP err_lambdaSEXP, SEXP err_omegaSEXP, SEXP N0SEXP, SEXP T0SEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< const NumericVector& >::type X(XSEXP);
+    Rcpp::traits::input_parameter< const NumericVector& >::type lambda(lambdaSEXP);
+    Rcpp::traits::input_parameter< const NumericVector& >::type omega(omegaSEXP);
+    Rcpp::traits::input_parameter< const NumericVector& >::type err_lambda(err_lambdaSEXP);
+    Rcpp::traits::input_parameter< const NumericVector& >::type err_omega(err_omegaSEXP);
+    Rcpp::traits::input_parameter< const int >::type N0(N0SEXP);
+    Rcpp::traits::input_parameter< const int >::type T0(T0SEXP);
+    rcpp_result_gen = Rcpp::wrap(grad_beta_cpp(X, lambda, omega, err_lambda, err_omega, N0, T0));
+    return rcpp_result_gen;
+END_RCPP
+}
+// contract3_cpp
+NumericMatrix contract3_cpp(const NumericVector& X, const NumericVector& v);
+RcppExport SEXP _synthdid_contract3_cpp(SEXP XSEXP, SEXP vSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< const NumericVector& >::type X(XSEXP);
+    Rcpp::traits::input_parameter< const NumericVector& >::type v(vSEXP);
+    rcpp_result_gen = Rcpp::wrap(contract3_cpp(X, v));
+    return rcpp_result_gen;
+END_RCPP
+}
 
 static const R_CallMethodDef CallEntries[] = {
+    {"_synthdid_fw_step_cpp", (DL_FUNC) &_synthdid_fw_step_cpp, 5},
     {"_synthdid_sc_weight_fw_cpp", (DL_FUNC) &_synthdid_sc_weight_fw_cpp, 6},
+    {"_synthdid_grad_beta_cpp", (DL_FUNC) &_synthdid_grad_beta_cpp, 7},
+    {"_synthdid_contract3_cpp", (DL_FUNC) &_synthdid_contract3_cpp, 2},
     {NULL, NULL, 0}
 };
 
