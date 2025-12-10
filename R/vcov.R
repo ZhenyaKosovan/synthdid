@@ -138,23 +138,36 @@ placebo_se <- function(estimate, replications) {
     N0 <- length(ind) - N1
     weights.boot <- weights
     weights.boot$omega <- sum_normalize(weights$omega[ind[1:N0]])
-    do.call(
-      synthdid_estimate,
-      c(list(
+    do.call(synthdid_estimate, c(list(Y = setup$Y[ind, ], N0 = N0, T0 = setup$T0, X = setup$X[ind, , ], weights = weights.boot), opts))
+  }
+
+  placebo_estimates <- furrr::future_map_dbl(
+    seq_len(replications),
+    \(x) {
+      ind <- sample.int(setup$N0)
+      N0 <- length(ind) - N1
+      weights.boot <- weights
+      weights.boot$omega <- sum_normalize(weights$omega[ind[1:N0]])
+      synthdid_estimate(
         Y = setup$Y[ind, ],
         N0 = N0,
         T0 = setup$T0,
         X = setup$X[ind, , ],
-        weights = weights.boot
-      ), opts)
-    )
-  }
-  draw <- function() theta(sample(1:setup$N0))
-  replicate_fun <- function(n) replicate(n, draw())
-  if (requireNamespace("future.apply", quietly = TRUE)) {
-    replicate_fun <- function(n) future.apply::future_replicate(n, draw(), future.seed = TRUE)
-  }
-  sqrt((replications - 1) / replications) * sd(replicate_fun(replications))
+        weights = weights.boot,
+        zeta.omega = opts$zeta.omega,
+        zeta.lambda = opts$zeta.lambda,
+        omega.intercept = opts$omega.intercept,
+        lambda.intercept = opts$lambda.intercept,
+        update.omega = opts$update.omega,
+        update.lambda = opts$update.lambda,
+        min.decrease = opts$min.decrease,
+        max.iter = opts$max.iter
+      ) %>% c()
+    },
+    .options = furrr::furrr_options(seed = TRUE)
+  )
+
+  sqrt((replications - 1) / replications) * sd(placebo_estimates)
 }
 
 sum_normalize <- function(x) {

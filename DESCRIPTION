@@ -26,7 +26,8 @@ Suggests:
     testthat (>= 3.0.0),
     ggplot2,
     CVXR,
-    future.apply
+    future,
+    furrr
 URL: https://github.com/synth-inference/synthdid
 BugReports: https://github.com/synth-inference/synthdid/issues
 Config/testthat/edition: 3
