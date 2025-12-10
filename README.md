@@ -18,16 +18,16 @@ This package is currently in beta and the functionality and interface is subject
 
 Some helpful links for getting started:
 
-- The [R package documentation](https://synth-inference.github.io/synthdid/) contains usage examples and method reference.
-- The [online vignettes](https://synth-inference.github.io/synthdid/articles/more-plotting.html) contains a gallery of plot examples.
-- For community questions and answers around usage, see [Github issues page](https://github.com/synth-inference/synthdid/issues).
+- The [R package documentation](https://zhenyakosovan.github.io/synthdid/) contains usage examples and method reference.
+- The [online vignettes](https://zhenyakosovan.github.io/synthdid/articles/more-plotting.html) contains a gallery of plot examples.
+- For community questions and answers around usage, see [GitHub issues page](https://github.com/ZhenyaKosovan/synthdid/issues).
 
 ### Installation
 
 The current development version can be installed from source using devtools.
 
 ```R
-devtools::install_github("synth-inference/synthdid")
+devtools::install_github("ZhenyaKosovan/synthdid")
 ```
 
 ### Example
