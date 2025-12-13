@@ -29,4 +29,6 @@
 #'}
 #'
 #' @keywords internal
+#' @useDynLib synthdid, .registration = TRUE
+"_PACKAGE"
 "_PACKAGE"

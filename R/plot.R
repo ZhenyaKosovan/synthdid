@@ -64,7 +64,7 @@ synthdid_plot <- function(estimates, treated.name = "treated", control.name = "s
   } else {
     stop("Plotting requires the package `ggplot2`. Install it to use this function.")
   }
-  if (class(estimates) == "synthdid_estimate") {
+  if (inherits(estimates, "synthdid_estimate")) {
     estimates <- list(estimates)
   }
   if (is.null(names(estimates))) {
@@ -395,7 +395,7 @@ synthdid_units_plot <- function(estimates, negligible.threshold = .001, negligib
   } else {
     stop("Plotting requires the package `ggplot2`. Install it to use this function.")
   }
-  if (class(estimates) == "synthdid_estimate") {
+  if (inherits(estimates, "synthdid_estimate")) {
     estimates <- list(estimates)
   }
   if (is.null(names(estimates))) {
@@ -455,7 +455,7 @@ synthdid_rmse_plot <- function(estimates) { # pass an estimate or list of estima
   } else {
     stop("Plotting requires the package `ggplot2`. Install it to use this function.")
   }
-  if (class(estimates) == "synthdid_estimate") {
+  if (inherits(estimates, "synthdid_estimate")) {
     estimates <- list(estimates)
   }
   if (is.null(names(estimates))) {

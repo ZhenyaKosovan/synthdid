@@ -1,12 +1,35 @@
-# collapse Y to an N0+1 x T0+1 vector by averaging the last N1=nrow(Y)-N0 rows and T1=ncol(Y)-T0 columns
+#' Collapse an outcome matrix to synthetic control form
+#'
+#' Aggregates post-treatment rows and columns into averages so the final row and
+#' column represent treated units and treated periods. This is a convenience for
+#' algorithms that expect a \code{(N0 + 1) x (T0 + 1)} matrix with the treated
+#' block compressed to a single row and column.
+#'
+#' @param Y Outcome matrix with control units first and pre-treatment periods first.
+#' @param N0 Number of control units (rows).
+#' @param T0 Number of pre-treatment periods (columns).
+#'
+#' @return A numeric matrix of dimension \code{N0 + 1} by \code{T0 + 1} where
+#'   the final row and column contain treated averages.
+#' @keywords internal
 collapsed.form = function(Y, N0, T0) {
   N = nrow(Y); T = ncol(Y)
   rbind(cbind(Y[1:N0, 1:T0, drop = FALSE], rowMeans(Y[1:N0, (T0 + 1):T, drop = FALSE])),
     cbind(t(colMeans(Y[(N0 + 1):N, 1:T0, drop = FALSE])), mean(Y[(N0 + 1):N, (T0 + 1):T, drop = FALSE])))
 }
 
-# return the component-wise sum of decreasing vectors in which NA is taken to mean that the vector has stopped decreasing
-# and we can use the last non-na element. Where both are NA, leave as NA.
+#' Combine decreasing sequences while respecting terminal NA markers
+#'
+#' Treats \code{NA} as a sentinel indicating that a series has stopped
+#' decreasing and should hold its last non-\code{NA} value. Returns the
+#' element-wise sum with terminal \code{NA} preserved where both series ended.
+#'
+#' @param x,y Numeric vectors, typically monotone decreasing with trailing
+#'   \code{NA} entries.
+#'
+#' @return Numeric vector of pairwise sums with shared terminal \code{NA}
+#'   retained.
+#' @keywords internal
 pairwise.sum.decreasing = function(x, y) {
   na.x = is.na(x)
   na.y = is.na(y)
@@ -120,6 +143,15 @@ timesteps = function(Y) {
 
 ## define some convenient accessors
 setOldClass("synthdid_estimate")
+#' Create a slot accessor function
+#'
+#' Builds a small closure used to define S4 generics that delegate to list-style
+#' elements stored on synthdid objects.
+#'
+#' @param name Name of the element to retrieve.
+#'
+#' @return A function that extracts the named element from its input.
+#' @keywords internal
 get_slot = function(name) { function(object) { object[[name]] } }
 setGeneric('weights')
 setGeneric('Y',      get_slot('Y'))
@@ -131,7 +163,16 @@ setMethod(lambda,  signature='synthdid_estimate',  definition=function(object) {
 setMethod(omega,   signature='synthdid_estimate',  definition=function(object) { omega(weights(object))  })
 
 
-# A convenience function for generating data for unit tests.
+#' Generate a synthetic low-rank panel for testing
+#'
+#' Creates a reproducible, low-rank outcome matrix with a block treatment
+#' indicator. Useful for unit tests or demonstrations that need structured data
+#' with controlled noise and treatment effects.
+#'
+#' @return A list containing the outcome matrix \code{Y}, latent matrix
+#'   \code{L}, and integers \code{N0} and \code{T0} describing the number of
+#'   control units and pre-treatment periods.
+#' @keywords internal
 random.low.rank = function() {
   n_0 <- 100
   n_1 <- 10

@@ -2,16 +2,21 @@
 % Please edit documentation in R/vcov.R
 \name{jackknife}
 \alias{jackknife}
-\title{Jackknife standard error of function \code{theta} at samples \code{x}.}
+\title{Jackknife standard error of a scalar estimator}
 \usage{
 jackknife(x, theta)
 }
 \arguments{
-\item{x}{vector of samples}
+\item{x}{Vector of sample indices.}
 
-\item{theta}{a function which returns a scalar estimate}
+\item{theta}{Function returning a scalar estimate when applied to a subset of
+\code{x}.}
+}
+\value{
+Numeric jackknife standard error.
 }
 \description{
-Jackknife standard error of function \code{theta} at samples \code{x}.
+Computes the leave-one-out jackknife standard error for a statistic
+calculated by \code{theta}.
 }
 \keyword{internal}

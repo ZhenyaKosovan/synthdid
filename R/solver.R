@@ -1,3 +1,14 @@
+#' Contract a 3-D array along its covariate dimension
+#'
+#' Multiplies each slice \code{X[,,k]} by the corresponding coefficient in
+#' \code{v} and sums the results. When \code{v} is empty, returns a zero matrix
+#' of the appropriate shape.
+#'
+#' @param X A three-dimensional array of covariates shaped \code{N x T x C}.
+#' @param v Numeric vector of length \code{C} containing coefficients.
+#'
+#' @return A numeric matrix with dimension \code{dim(X)[1:2]}.
+#' @keywords internal
 contract3 <- function(X, v) {
   stopifnot(length(dim(X)) == 3, dim(X)[3] == length(v))
   if (length(v) == 0) {
@@ -6,7 +17,23 @@ contract3 <- function(X, v) {
   contract3_cpp(X, v)
 }
 
-# a Frank-Wolfe solver for synthetic control weights using exact line search
+#' Frank-Wolfe solver for synthetic control time weights
+#'
+#' Estimates \code{lambda} weights using exact line search under simplex
+#' constraints with optional ridge regularization.
+#'
+#' @param Y Collapsed outcome matrix (controls first, pre-treatment first).
+#' @param zeta Ridge penalty multiplier.
+#' @param intercept Logical; include an intercept adjustment when fitting
+#'   weights.
+#' @param lambda Optional initialization for \code{lambda}; defaults to uniform.
+#' @param min.decrease Minimum squared-improvement threshold to continue
+#'   iterating.
+#' @param max.iter Maximum number of Frank-Wolfe iterations.
+#'
+#' @return A list with fields \code{lambda} (weights) and \code{vals} (objective
+#'   trace).
+#' @keywords internal
 sc.weight.fw <- function(Y,
                          zeta,
                          intercept = TRUE,
@@ -20,9 +47,30 @@ sc.weight.fw <- function(Y,
   sc_weight_fw_cpp(Y, zeta, intercept, lambda, min.decrease, max.iter)
 }
 
-# A Frank-Wolfe + Gradient solver for lambda, omega, and beta when there are covariates
-# Uses the exact line search Frank-Wolfe steps for lambda, omega and (1/t)*gradient steps for beta
-# pass update.lambda=FALSE/update.omega=FALSE to fix those weights at initial values, defaulting to uniform 1/T0 and 1/N0
+#' Joint Frank-Wolfe and gradient solver with covariates
+#'
+#' Alternates Frank-Wolfe updates for \code{lambda} and \code{omega} with
+#' gradient steps for covariate coefficients \code{beta}. Supports holding
+#' either weight vector fixed by setting \code{update.lambda} or
+#' \code{update.omega} to \code{FALSE}.
+#'
+#' @param Y Collapsed outcome matrix (controls first, pre-treatment first).
+#' @param X Array of covariates aligned with \code{Y}, shaped \code{N x T x C}.
+#' @param zeta.lambda,zeta.omega Ridge penalties for \code{lambda} and
+#'   \code{omega}.
+#' @param lambda.intercept,omega.intercept Logical flags for whether to demean
+#'   when fitting each set of weights.
+#' @param min.decrease Minimum squared-improvement threshold to continue
+#'   iterating.
+#' @param max.iter Maximum number of iterations.
+#' @param lambda,omega,beta Optional initial values; defaults are uniform
+#'   weights and zero coefficients.
+#' @param update.lambda,update.omega Logical flags indicating which weights to
+#'   update.
+#'
+#' @return A list with estimated \code{lambda}, \code{omega}, \code{beta}, and
+#'   the vector of objective values \code{vals}.
+#' @keywords internal
 sc.weight.fw.covariates <- function(Y,
                                     X = array(0, dim = c(dim(Y), 0)),
                                     zeta.lambda = 0,
@@ -112,6 +160,25 @@ sc.weight.fw.covariates <- function(Y,
 }
 
 
+#' Update weight vectors for synthdid optimization
+#'
+#' Performs a single round of Frank-Wolfe updates for \code{lambda} and
+#' \code{omega}, returning residuals and objective values used to monitor
+#' convergence.
+#'
+#' @param Y Collapsed outcome matrix (controls first, pre-treatment first).
+#' @param lambda,omega Current weight vectors.
+#' @param lambda.intercept,omega.intercept Logical flags for whether to demean
+#'   when fitting each set of weights.
+#' @param N0,T0 Numbers of control units and pre-treatment periods.
+#' @param update.lambda,update.omega Logical flags indicating which weights to
+#'   update.
+#' @param zeta.lambda,zeta.omega Ridge penalties for \code{lambda} and
+#'   \code{omega}.
+#'
+#' @return A list with updated \code{lambda}, \code{omega}, residual vectors
+#'   \code{err.lambda}, \code{err.omega}, and the objective value \code{val}.
+#' @keywords internal
 update.weights <- function(Y,
                            lambda,
                            omega,

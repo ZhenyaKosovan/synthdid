@@ -26,17 +26,19 @@ sparsify_function <- function(v) {
 #'        If false, use it exactly as passed. Defaults to false if a non-null value of weights$omega is passed.
 #' @param update.lambda  Analogous.
 #' @param min.decrease Tunes a stopping criterion for our weight estimator. Stop after an iteration results in a decrease
-#' 		        in penalized MSE smaller than min.decrease^2.
+#'   in penalized MSE smaller than min.decrease^2.
 #' @param max.iter A fallback stopping criterion for our weight estimator. Stop after this number of iterations.
 #' @param sparsify A function mapping a numeric vector to a (presumably sparser) numeric vector of the same shape, which must sum to one.
-#'                  If not null, we try to estimate sparse weights via a second round of Frank-Wolfe optimization
-#'                  initialized at sparsify( the solution to the first round ).
+#'   If not null, we try to estimate sparse weights via a second round of Frank-Wolfe optimization initialized at sparsify(the solution to the first round).
 #' @param max.iter.pre.sparsify Analogous to max.iter, but for the pre-sparsification first-round of optimization.
-#'     		                Not used if sparsify=NULL.
+#'   Not used if sparsify = NULL.
+#' @param estimate_se Logical. If TRUE, attempt to compute a standard error for the estimate (stored as an attribute).
+#' @param se_method Standard-error method to use when estimate_se = TRUE; one of "bootstrap", "jackknife", or "placebo".
+#' @param se_replications Number of replications when using bootstrap or placebo standard errors.
 #' @return An average treatment effect estimate with 'weights' and 'setup' attached as attributes.
-#'         'weights' contains the estimated weights lambda and omega and corresponding intercepts,
-#'         as well as regression coefficients beta if X is passed.
-#'         'setup' is a list describing the problem passed in: Y, N0, T0, X.
+#'   'weights' contains the estimated weights lambda and omega and corresponding intercepts, as well as regression coefficients beta if X is passed.
+#'   'setup' is a list describing the problem passed in: Y, N0, T0, X.
+#'   If estimate_se = TRUE, attributes 'se', 'se_method', and 'se_status' reflect the requested standard error computation.
 #' @export synthdid_estimate
 synthdid_estimate <- function(Y, N0, T0, X = array(dim = c(dim(Y), 0)),
                               noise.level = sd(apply(Y[1:N0, 1:T0], 1, diff)),

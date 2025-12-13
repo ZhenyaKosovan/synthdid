@@ -2,20 +2,22 @@
 % Please edit documentation in R/placebo-simulations.R
 \name{decompose_Y}
 \alias{decompose_Y}
-\title{Decompose Y into components F, M, and E as described in Section 3.1.1
-also computes a set of 'unit factors': the first \link{rank} left singular vectors from SVD(Y)}
+\title{Decompose outcomes into signal and noise components}
 \usage{
 decompose_Y(Y, rank)
 }
 \arguments{
-\item{Y, }{the outcomes}
+\item{Y}{Outcome matrix.}
 
-\item{rank, }{the assumed rank of the signal component L=F+M}
+\item{rank}{Assumed rank of the signal component \code{L}.}
 }
 \value{
-a list with elements F, M, E, and unit_factors
+A list with elements \code{F}, \code{M}, \code{E}, and
+\code{unit_factors}.
 }
 \description{
-Decompose Y into components F, M, and E as described in Section 3.1.1
-also computes a set of 'unit factors': the first \link{rank} left singular vectors from SVD(Y)
+Splits an outcome matrix into low-rank signal \code{L = F + M} and residual
+\code{E} using the leading singular vectors, as described in Section 3.1.1 of
+the paper.
 }
+\keyword{internal}

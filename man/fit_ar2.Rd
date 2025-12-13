@@ -2,16 +2,18 @@
 % Please edit documentation in R/placebo-simulations.R
 \name{fit_ar2}
 \alias{fit_ar2}
-\title{Estimate ar2 coefficients from iid time series}
+\title{Estimate AR(2) coefficients from panel residuals}
 \usage{
 fit_ar2(E)
 }
 \arguments{
-\item{E, }{a matrix with those time series as rows}
+\item{E}{Matrix whose rows are time series.}
 }
 \value{
-a vector of ar2 coefficients: c(lag-1-coefficient, lag-2-coefficient)
+Numeric vector of AR(2) coefficients \code{c(phi1, phi2)}.
 }
 \description{
-Estimate ar2 coefficients from iid time series
+Fits a simple autoregressive model to the residual matrix produced by
+\code{decompose_Y}.
 }
+\keyword{internal}

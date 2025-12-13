@@ -22,7 +22,10 @@ synthdid_estimate(
   min.decrease = 1e-05 * noise.level,
   max.iter = 10000,
   sparsify = sparsify_function,
-  max.iter.pre.sparsify = 100
+  max.iter.pre.sparsify = 100,
+  estimate_se = FALSE,
+  se_method = c("bootstrap", "jackknife", "placebo"),
+  se_replications = 200
 )
 }
 \arguments{
@@ -62,17 +65,22 @@ in penalized MSE smaller than min.decrease^2.}
 \item{max.iter}{A fallback stopping criterion for our weight estimator. Stop after this number of iterations.}
 
 \item{sparsify}{A function mapping a numeric vector to a (presumably sparser) numeric vector of the same shape, which must sum to one.
-If not null, we try to estimate sparse weights via a second round of Frank-Wolfe optimization
-initialized at sparsify( the solution to the first round ).}
+If not null, we try to estimate sparse weights via a second round of Frank-Wolfe optimization initialized at sparsify(the solution to the first round).}
 
 \item{max.iter.pre.sparsify}{Analogous to max.iter, but for the pre-sparsification first-round of optimization.
-Not used if sparsify=NULL.}
+Not used if sparsify = NULL.}
+
+\item{estimate_se}{Logical. If TRUE, attempt to compute a standard error for the estimate (stored as an attribute).}
+
+\item{se_method}{Standard-error method to use when estimate_se = TRUE; one of "bootstrap", "jackknife", or "placebo".}
+
+\item{se_replications}{Number of replications when using bootstrap or placebo standard errors.}
 }
 \value{
 An average treatment effect estimate with 'weights' and 'setup' attached as attributes.
-'weights' contains the estimated weights lambda and omega and corresponding intercepts,
-as well as regression coefficients beta if X is passed.
+'weights' contains the estimated weights lambda and omega and corresponding intercepts, as well as regression coefficients beta if X is passed.
 'setup' is a list describing the problem passed in: Y, N0, T0, X.
+If estimate_se = TRUE, attributes 'se', 'se_method', and 'se_status' reflect the requested standard error computation.
 }
 \description{
 See 'Synthetic Difference in Differences' by Arkhangelsky et al. This implements Algorithm 1.

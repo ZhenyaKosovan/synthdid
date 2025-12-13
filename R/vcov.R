@@ -50,10 +50,30 @@ synthdid_se <- function(...) {
 }
 
 
-# The bootstrap se: Algorithm 2 of Arkhangelsky et al.
+#' Bootstrap standard error for synthdid estimates
+#'
+#' Implements Algorithm 2 from Arkhangelsky et al. to compute a bootstrap
+#' standard error.
+#'
+#' @param estimate A \code{synthdid_estimate} object.
+#' @param replications Number of bootstrap replications.
+#'
+#' @return Scalar bootstrap standard error.
+#' @keywords internal
 bootstrap_se <- function(estimate, replications) {
   sqrt((replications - 1) / replications) * sd(bootstrap_sample(estimate, replications))
 }
+
+#' Draw bootstrap replicates of a synthdid estimate
+#'
+#' Resamples units with replacement while respecting treatment/control splits,
+#' recomputing the estimator for each bootstrap sample.
+#'
+#' @inheritParams bootstrap_se
+#' @param replications Number of bootstrap replications to draw.
+#'
+#' @return Numeric vector of bootstrap estimates.
+#' @keywords internal
 bootstrap_sample <- function(estimate, replications) {
   setup <- attr(estimate, "setup")
   opts <- attr(estimate, "opts")
@@ -82,9 +102,17 @@ bootstrap_sample <- function(estimate, replications) {
 }
 
 
-# The fixed-weights jackknife estimate of variance: Algorithm 3 of Arkhangelsky et al.
-# if weights = NULL is passed explicitly, calculates the usual jackknife estimate of variance.
-# returns NA if there is one treated unit or, for the fixed-weights jackknife, one control with nonzero weight
+#' Jackknife standard error for synthdid estimates
+#'
+#' Implements Algorithm 3 from Arkhangelsky et al. Supports both fixed-weight
+#' and refit variants depending on whether weights are supplied.
+#'
+#' @param estimate A \code{synthdid_estimate} object.
+#' @param weights Optional weight list; if provided, updates are suppressed to
+#'   emulate the fixed-weight jackknife.
+#'
+#' @return Scalar jackknife standard error, or \code{NA} when not applicable.
+#' @keywords internal
 jackknife_se <- function(estimate, weights = attr(estimate, "weights")) {
   setup <- attr(estimate, "setup")
   opts <- attr(estimate, "opts")
@@ -107,9 +135,16 @@ jackknife_se <- function(estimate, weights = attr(estimate, "weights")) {
   jackknife(1:nrow(setup$Y), theta)
 }
 
-#' Jackknife standard error of function `theta` at samples `x`.
-#' @param x vector of samples
-#' @param theta a function which returns a scalar estimate
+#' Jackknife standard error of a scalar estimator
+#'
+#' Computes the leave-one-out jackknife standard error for a statistic
+#' calculated by \code{theta}.
+#'
+#' @param x Vector of sample indices.
+#' @param theta Function returning a scalar estimate when applied to a subset of
+#'   \code{x}.
+#'
+#' @return Numeric jackknife standard error.
 #' @importFrom stats var
 #' @keywords internal
 jackknife <- function(x, theta) {
@@ -124,8 +159,17 @@ jackknife <- function(x, theta) {
 }
 
 
-
-# The placebo se: Algorithm 4 of Arkhangelsky et al.
+#' Placebo standard error for synthdid estimates
+#'
+#' Implements Algorithm 4 from Arkhangelsky et al. by repeatedly treating random
+#' subsets of control units as pseudo-treated to approximate the estimator's
+#' variability.
+#'
+#' @param estimate A \code{synthdid_estimate} object.
+#' @param replications Number of placebo replications.
+#'
+#' @return Scalar placebo standard error.
+#' @keywords internal
 placebo_se <- function(estimate, replications) {
   setup <- attr(estimate, "setup")
   opts <- attr(estimate, "opts")
@@ -148,7 +192,7 @@ placebo_se <- function(estimate, replications) {
       N0 <- length(ind) - N1
       weights.boot <- weights
       weights.boot$omega <- sum_normalize(weights$omega[ind[1:N0]])
-      synthdid_estimate(
+      as.vector(synthdid_estimate(
         Y = setup$Y[ind, ],
         N0 = N0,
         T0 = setup$T0,
@@ -162,7 +206,7 @@ placebo_se <- function(estimate, replications) {
         update.lambda = opts$update.lambda,
         min.decrease = opts$min.decrease,
         max.iter = opts$max.iter
-      ) %>% c()
+      ))
     },
     .options = furrr::furrr_options(seed = TRUE)
   )
@@ -170,6 +214,15 @@ placebo_se <- function(estimate, replications) {
   sqrt((replications - 1) / replications) * sd(placebo_estimates)
 }
 
+#' Normalize a weight vector to sum to one
+#'
+#' Converts an input vector into a simple probability distribution. If all
+#' entries are zero, returns a uniform vector of the same length.
+#'
+#' @param x Numeric vector.
+#'
+#' @return A numeric vector with entries summing to one.
+#' @keywords internal
 sum_normalize <- function(x) {
   if (sum(x) != 0) {
     x / sum(x)

@@ -2,24 +2,23 @@
 % Please edit documentation in R/placebo-simulations.R
 \name{randomize_treatment}
 \alias{randomize_treatment}
-\title{randomize treatment to n units with probability pi
-then if the number of treated units is zero, assign treatment to one unit uniformly at random
-and  if the number of treated units exceeds a cap, remove treatment uniformly at random so it is exactly that cap}
+\title{Randomize treatment assignment with sensible caps}
 \usage{
 randomize_treatment(pi, N, N1)
 }
 \arguments{
-\item{pi, }{the randomization probabilities}
+\item{pi}{Randomization probabilities.}
 
-\item{N, }{the number of units}
+\item{N}{Number of units.}
 
-\item{N1, }{the cap on the number of treated units}
+\item{N1}{Maximum number of treated units to allow.}
 }
 \value{
-a binary vector of length N, with ones indicating assignment to treatment
+A binary vector of length \code{N} indicating treatment assignment.
 }
 \description{
-randomize treatment to n units with probability pi
-then if the number of treated units is zero, assign treatment to one unit uniformly at random
-and  if the number of treated units exceeds a cap, remove treatment uniformly at random so it is exactly that cap
+Draws binary assignments with probability \code{pi} and enforces at least one
+treated unit and no more than \code{N1}. Excess treated units are dropped at
+random; if none are treated, units are promoted at random.
 }
+\keyword{internal}
