@@ -320,7 +320,7 @@ synthdid_plot <- function(estimates, treated.name = "treated", control.name = "s
     ) +
       geom_line(aes(x = x, y = y, group = unit, alpha = spaghetti.line.alpha * show),
         data = conc$spaghetti.lines,
-        color = "black", size = spaghetti.line.width
+        color = "black", linewidth = spaghetti.line.width
       )
   }
 
@@ -434,10 +434,10 @@ synthdid_units_plot <- function(estimates, negligible.threshold = .001, negligib
   p <- ggplot(plot.data) +
     geom_point(aes(x = unit, y = y, size = weight), data = plot.data[plot.data$weight > negligible.threshold, ]) +
     geom_point(aes(x = unit, y = y, size = weight), data = plot.data[plot.data$weight <= negligible.threshold, ], alpha = negligible.alpha, shape = 4, show.legend = FALSE) +
-    geom_hline(aes(yintercept = estimate), size = .75)
+    geom_hline(aes(yintercept = estimate), linewidth = .75)
   if (!all(is.na(plot.data$se))) {
-    p <- p + geom_hline(aes(yintercept = estimate - 1.96 * se), size = .5, alpha = .5) +
-      geom_hline(aes(yintercept = estimate + 1.96 * se), size = .5, alpha = .5)
+    p <- p + geom_hline(aes(yintercept = estimate - 1.96 * se), linewidth = .5, alpha = .5) +
+      geom_hline(aes(yintercept = estimate + 1.96 * se), linewidth = .5, alpha = .5)
   }
   p + facet_grid(. ~ estimator) + xlab("") + ylab("") + guides(shape = "none") +
     theme_light() + theme(axis.text.x = element_text(angle = 90, hjust = 1))
