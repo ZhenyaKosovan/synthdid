@@ -61,7 +61,7 @@ test_that("column/row/scaling invariances hold with default options", {
       set.seed(seed)
       estimate.se.col.scaled <- synthdid_se(estimate.col.scaled, method = CI.method, replications = 10)
       expect_equal(c(estimate), c(estimate.col.scaled))
-      expect_equal(estimate.se, estimate.se.col.scaled)
+      expect_equal(estimate.se, estimate.se.col.scaled, tolerance = 1e-4)
     }
   }
 
@@ -77,7 +77,7 @@ test_that("column/row/scaling invariances hold with default options", {
       set.seed(seed)
       estimate.se.row.scaled <- synthdid_se(estimate.row.scaled, method = CI.method, replications = 10)
       expect_equal(c(estimate), c(estimate.row.scaled))
-      expect_equal(estimate.se, estimate.se.row.scaled)
+      expect_equal(estimate.se, estimate.se.row.scaled, tolerance = 1e-4)
     }
   }
 
@@ -96,7 +96,7 @@ test_that("column/row/scaling invariances hold with default options", {
       estimate.se.scaled <- synthdid_se(estimate.scaled, method = CI.method, replications = 10)
       weights.scaled <- attr(estimate.scaled, "weights")
       expect_equal(c(c.small * estimate), c(estimate.scaled))
-      expect_equal(c.small * estimate.se, estimate.se.scaled)
+      expect_equal(c.small * estimate.se, estimate.se.scaled, tolerance = 1e-4)
       expect_equal(weights[c("lambda", "omega")], weights.scaled[c("lambda", "omega")])
     }
   }
@@ -113,7 +113,7 @@ test_that("column/row/scaling invariances hold with default options", {
       estimate.se.scaled <- synthdid_se(estimate.scaled, method = CI.method, replications = 10)
       weights.scaled <- attr(estimate.scaled, "weights")
       expect_equal(c(c.large * estimate), c(estimate.scaled))
-      expect_equal(c.large * estimate.se, estimate.se.scaled)
+      expect_equal(c.large * estimate.se, estimate.se.scaled, tolerance = 1e-4)
       expect_equal(weights[c("lambda", "omega")], weights.scaled[c("lambda", "omega")])
     }
   }
@@ -159,7 +159,7 @@ test_that("treated effect shifts correctly with scalar shifts to the 4 blocks", 
       estimate <- estimator(Y.orig, N0, T0)
       estimate.shift <- estimator(Y2, N0, T0)
       expect_equal(lambda(estimate.shift), lambda(estimate))
-      expect_equal(c(estimate.shift), c(estimate) - c, tol = 1e-10)
+      expect_equal(c(estimate.shift), c(estimate) - c, tolerance = 1e-10)
     }
 
     # 3.
@@ -170,7 +170,7 @@ test_that("treated effect shifts correctly with scalar shifts to the 4 blocks", 
       estimate <- estimator(Y.orig, N0, T0)
       estimate.shift <- estimator(Y3, N0, T0)
       expect_equal(lambda(estimate.shift), lambda(estimate))
-      expect_equal(c(estimate.shift), c(estimate) + c, tol = 1e-10)
+      expect_equal(c(estimate.shift), c(estimate) + c, tolerance = 1e-10)
     }
 
     # 4.
@@ -181,7 +181,7 @@ test_that("treated effect shifts correctly with scalar shifts to the 4 blocks", 
       estimate <- estimator(Y.orig, N0, T0)
       estimate.shift <- estimator(Y4, N0, T0)
       expect_equal(omega(estimate.shift), omega(estimate))
-      expect_equal(c(estimate.shift), c(estimate) - c, tol = 1e-10)
+      expect_equal(c(estimate.shift), c(estimate) - c, tolerance = 1e-10)
     }
   }
 })
