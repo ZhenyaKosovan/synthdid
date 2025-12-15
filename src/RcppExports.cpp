@@ -15,7 +15,6 @@ NumericVector fw_step_cpp(const NumericMatrix& A, const NumericVector& x, const 
 RcppExport SEXP _synthdid_fw_step_cpp(SEXP ASEXP, SEXP xSEXP, SEXP bSEXP, SEXP etaSEXP, SEXP alphaSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
-    Rcpp::RNGScope rcpp_rngScope_gen;
     Rcpp::traits::input_parameter< const NumericMatrix& >::type A(ASEXP);
     Rcpp::traits::input_parameter< const NumericVector& >::type x(xSEXP);
     Rcpp::traits::input_parameter< const NumericVector& >::type b(bSEXP);
@@ -30,7 +29,6 @@ List sc_weight_fw_cpp(NumericMatrix Y, const double zeta, const bool intercept, 
 RcppExport SEXP _synthdid_sc_weight_fw_cpp(SEXP YSEXP, SEXP zetaSEXP, SEXP interceptSEXP, SEXP lambdaSEXP, SEXP min_decreaseSEXP, SEXP max_iterSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
-    Rcpp::RNGScope rcpp_rngScope_gen;
     Rcpp::traits::input_parameter< NumericMatrix >::type Y(YSEXP);
     Rcpp::traits::input_parameter< const double >::type zeta(zetaSEXP);
     Rcpp::traits::input_parameter< const bool >::type intercept(interceptSEXP);
@@ -46,7 +44,6 @@ NumericVector grad_beta_cpp(const NumericVector& X, const NumericVector& lambda,
 RcppExport SEXP _synthdid_grad_beta_cpp(SEXP XSEXP, SEXP lambdaSEXP, SEXP omegaSEXP, SEXP err_lambdaSEXP, SEXP err_omegaSEXP, SEXP N0SEXP, SEXP T0SEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
-    Rcpp::RNGScope rcpp_rngScope_gen;
     Rcpp::traits::input_parameter< const NumericVector& >::type X(XSEXP);
     Rcpp::traits::input_parameter< const NumericVector& >::type lambda(lambdaSEXP);
     Rcpp::traits::input_parameter< const NumericVector& >::type omega(omegaSEXP);
@@ -63,7 +60,6 @@ NumericMatrix contract3_cpp(const NumericVector& X, const NumericVector& v);
 RcppExport SEXP _synthdid_contract3_cpp(SEXP XSEXP, SEXP vSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
-    Rcpp::RNGScope rcpp_rngScope_gen;
     Rcpp::traits::input_parameter< const NumericVector& >::type X(XSEXP);
     Rcpp::traits::input_parameter< const NumericVector& >::type v(vSEXP);
     rcpp_result_gen = Rcpp::wrap(contract3_cpp(X, v));

@@ -5,7 +5,7 @@ using namespace Rcpp;
 
 
 
-// [[Rcpp::export]]
+// [[Rcpp::export(rng = false)]]
 NumericVector fw_step_cpp(const NumericMatrix& A,
                           const NumericVector& x,
                           const NumericVector& b,
@@ -99,7 +99,7 @@ NumericVector fw_step_cpp(const NumericMatrix& A,
   return out;
 }
 
-// [[Rcpp::export]]
+// [[Rcpp::export(rng = false)]]
 List sc_weight_fw_cpp(NumericMatrix Y,
                       const double zeta,
                       const bool intercept,

@@ -3,7 +3,7 @@ using namespace Rcpp;
 
 // [[Rcpp::plugins(cpp11)]]
 
-// [[Rcpp::export]]
+// [[Rcpp::export(rng = false)]]
 NumericVector grad_beta_cpp(const NumericVector& X,
                             const NumericVector& lambda,
                             const NumericVector& omega,
@@ -57,7 +57,7 @@ NumericVector grad_beta_cpp(const NumericVector& X,
   return grad;
 }
 
-// [[Rcpp::export]]
+// [[Rcpp::export(rng = false)]]
 NumericMatrix contract3_cpp(const NumericVector& X, const NumericVector& v) {
   const IntegerVector dims = X.attr("dim");
   if (dims.size() != 3) {
