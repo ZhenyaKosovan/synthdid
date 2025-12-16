@@ -14,7 +14,7 @@ Depends:
     R (>= 3.4)
 Imports:
     mvtnorm,
-    Rcpp (>= 1.0.7),
+    Rcpp,
     stats,
     utils,
     graphics,
@@ -22,7 +22,7 @@ Imports:
     ggplot2,
     grid
 LinkingTo:
-    Rcpp (>= 1.0.7)
+    Rcpp
 License: GPL (>= 2) | BSD_3_clause + file LICENSE
 Encoding: UTF-8
 LazyData: true

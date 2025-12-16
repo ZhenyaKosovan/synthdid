@@ -18,17 +18,19 @@
 #'
 #' @examples
 #' \donttest{
-#'# Estimate the effect of California Proposition 99 on cigarette consumption
-#'data('california_prop99')
-#'setup = panel.matrices(california_prop99)
-#'tau.hat = synthdid_estimate(setup$Y, setup$N0, setup$T0)
-#'se = sqrt(vcov(tau.hat, method='placebo'))
-#'sprintf('point estimate: %1.2f', tau.hat)
-#'sprintf('95%% CI (%1.2f, %1.2f)', tau.hat - 1.96 * se, tau.hat + 1.96 * se)
-#'plot(tau.hat)
-#'}
+#' # Estimate the effect of California Proposition 99 on cigarette consumption
+#' data("california_prop99")
+#' setup <- panel.matrices(california_prop99)
+#' tau.hat <- synthdid_estimate(setup$Y, setup$N0, setup$T0)
+#' se <- sqrt(vcov(tau.hat, method = "placebo"))
+#' sprintf("point estimate: %1.2f", tau.hat)
+#' sprintf("95%% CI (%1.2f, %1.2f)", tau.hat - 1.96 * se, tau.hat + 1.96 * se)
+#' plot(tau.hat)
+#' }
 #'
 #' @keywords internal
 #' @useDynLib synthdid, .registration = TRUE
-"_PACKAGE"
+## usethis namespace: start
+#' @importFrom Rcpp sourceCpp
+## usethis namespace: end
 "_PACKAGE"
