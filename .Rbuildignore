@@ -10,3 +10,5 @@
 ^DEVELOPING\.md$
 ^data/README\.md$
 ^\.github$
+^src\.o
+^src\.so
