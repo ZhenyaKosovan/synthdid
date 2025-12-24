@@ -178,12 +178,6 @@ placebo_se <- function(estimate, replications) {
   if (setup$N0 <= N1) {
     stop("must have more controls than treated units to use the placebo se")
   }
-  theta <- function(ind) {
-    N0 <- length(ind) - N1
-    weights.boot <- weights
-    weights.boot$omega <- sum_normalize(weights$omega[ind[1:N0]])
-    do.call(synthdid_estimate, c(list(Y = setup$Y[ind, ], N0 = N0, T0 = setup$T0, X = setup$X[ind, , ], weights = weights.boot), opts))
-  }
 
   placebo_estimates <- furrr::future_map_dbl(
     seq_len(replications),
