@@ -12,3 +12,4 @@
 ^\.github$
 ^src/.*\.o$
 ^src/.*\.so$
+^README\.Rmd$

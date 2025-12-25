@@ -14,7 +14,6 @@ test_that("a simple workflow doesn't error", {
 
 test_that("plotting doesn't error with (i) dates as colnames (ii) spaghetti units", {
   data(california_prop99)
-
   california_prop99$date <- as.Date(sprintf("%04d/%02d/%02d", california_prop99$Year, 1, 1))
   setup <- panel.matrices(california_prop99, time = "date")
   estimate <- synthdid_estimate(setup$Y, setup$N0, setup$T0)
@@ -53,7 +52,6 @@ test_that("column/row/scaling invariances hold with default options", {
   bt <- 2 * matrix(1:ncol(setup$Y), nrow(setup$Y), ncol(setup$Y), byrow = TRUE)
   for (estimator in estimators) {
     for (CI.method in CI.methods) {
-      print(CI.method)
       estimate <- estimator(setup$Y, setup$N0, setup$T0)
       set.seed(seed)
       estimate.se <- synthdid_se(estimate, method = CI.method, replications = 10)

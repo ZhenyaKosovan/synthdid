@@ -1,22 +1,20 @@
 # synthdid: Synthetic Difference in Differences Estimation
 
 <!-- badges: start -->
-
 [![R-CMD-check](https://github.com/ZhenyaKosovan/synthdid/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/ZhenyaKosovan/synthdid/actions/workflows/R-CMD-check.yaml) [![Codecov test coverage](https://codecov.io/gh/ZhenyaKosovan/synthdid/graph/badge.svg)](https://app.codecov.io/gh/ZhenyaKosovan/synthdid)
+<!-- badges: end -->
 
-￼<!-- badges: end -->
+This package implements the synthetic difference in difference estimator (SDID) for the average treatment effect in panel data, as proposed in Arkhangelsky et al. (2019). We observe matrices of outcomes `Y` and binary treatment indicators `W` that satisfy \(Y_{ij} = L_{ij} + \tau_{ij} W_{ij} + \varepsilon_{ij}\). Here \(\tau_{ij}\) is the effect of treatment on unit \(i\) at time \(j\), and we estimate the average effect of treatment when and where it happened (the average of \(\tau_{ij}\) over the observations with \(W_{ij} = 1\)). All treated units must begin treatment simultaneously, so \(W\) is a block matrix: \(W_{ij} = 1\) for \(i > N_0\) and \(j > T_0\) and zero otherwise, with \(N_0\) denoting the number of control units and \(T_0\) the number of observation times before onset of treatment. This applies, in particular, to the case of a single treated unit or treated period.
 
-This pack￼age implements the synthetic difference in difference estimator (SDID) for the average treatment effect in panel data, as proposed in Arkhangelsky et al (2019). We observe matrices of outcomes Y and binary treatment indicators W that we think of as satisfying Y<sub>ij</sub> = L<sub>ij</sub> + τ<sub>ij</sub> W<sub>ij</sub> + ε<sub>ij</sub>. Here τ<sub>ij</sub> is the effect of treatment on the unit i at time j, and we estimate the average effect of treatment when and where it happened: the average of τ<sub>ij</sub> over the observations with W<sub>ij</sub>=1. All treated units must begin treatment simultaneously, so W is a block matrix: W<sub>ij</sub> = 1 for i \> N<sub>0</sub> and j \> T<sub>0</sub> and zero otherwise, with N<sub>0</sub> denoting the number of control units and T<sub>0</sub> the number of observation times before onset of treatment. This applies, in particular, to the case of a single treated unit or treated period.
-
-This package is currently in beta and the functionality and interface is subject to change.
+This package is currently in beta and the functionality and interface are subject to change.
 
 Some helpful links for getting started:
 
--   The [R package documentation](https://zhenyakosovan.github.io/synthdid/) contains usage examples and method reference.
--   The [online vignettes](https://zhenyakosovan.github.io/synthdid/articles/more-plotting.html) contains a gallery of plot examples.
--   For community questions and answers around usage, see [GitHub issues page](https://github.com/ZhenyaKosovan/synthdid/issues).
+- The [R package documentation](https://zhenyakosovan.github.io/synthdid/) contains usage examples and method reference.
+- The [online vignettes](https://zhenyakosovan.github.io/synthdid/articles/more-plotting.html) contain a gallery of plot examples.
+- For community questions and answers around usage, see the [GitHub issues page](https://github.com/ZhenyaKosovan/synthdid/issues).
 
-### Installation
+## Installation
 
 The current development version can be installed from source using devtools.
 
@@ -24,21 +22,43 @@ The current development version can be installed from source using devtools.
 devtools::install_github("ZhenyaKosovan/synthdid")
 ```
 
-### Example
+## Example
 
 ``` r
 library(synthdid)
 
 # Estimate the effect of California Proposition 99 on cigarette consumption
-data('california_prop99')
-setup = panel.matrices(california_prop99)
-tau.hat = synthdid_estimate(setup$Y, setup$N0, setup$T0)
-se = sqrt(vcov(tau.hat, method='placebo'))
-sprintf('point estimate: %1.2f', tau.hat)
-sprintf('95%% CI (%1.2f, %1.2f)', tau.hat - 1.96 * se, tau.hat + 1.96 * se)
-plot(tau.hat)
+data("california_prop99")
+setup <- panel.matrices(california_prop99)
+tau_hat <- synthdid_estimate(setup$Y, setup$N0, setup$T0)
+se <- sqrt(vcov(tau_hat, method = "placebo"))
+sprintf("point estimate: %1.2f", tau_hat)
+sprintf("95%% CI (%1.2f, %1.2f)", tau_hat - 1.96 * se, tau_hat + 1.96 * se)
+plot(tau_hat)
 ```
 
-#### References
+## Speeding up standard error computation
 
-Dmitry Arkhangelsky, Susan Athey, David A. Hirshberg, Guido W. Imbens, and Stefan Wager. <b>Synthetic Difference in Differences</b>, 2019. [<a href="https://arxiv.org/abs/1812.09970">arxiv</a>]
+Bootstrap and placebo standard errors use `furrr` under the hood. You can enable parallel execution by setting a `future` plan. The snippet below uses multiple cores via `multisession` when supported and resets to sequential afterward.
+
+``` r
+library(future)
+library(synthdid)
+
+data("california_prop99")
+setup <- panel.matrices(california_prop99)
+
+old_plan <- future::plan()
+on.exit(future::plan(old_plan), add = TRUE)
+
+future::plan(future::multisession, workers = min(8, future::availableCores()))
+
+tau_hat <- synthdid_estimate(setup$Y, setup$N0, setup$T0)
+se_boot <- sqrt(vcov(tau_hat, method = "bootstrap", replications = 500))
+```
+
+Note: on some platforms (e.g., CRAN macOS/Windows builders) multisession may be restricted; in that case `future::plan()` will fall back to sequential execution.
+
+### References
+
+Dmitry Arkhangelsky, Susan Athey, David A. Hirshberg, Guido W. Imbens, and Stefan Wager. **Synthetic Difference in Differences**, 2019. [arXiv](https://arxiv.org/abs/1812.09970)

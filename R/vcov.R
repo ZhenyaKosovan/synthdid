@@ -61,44 +61,47 @@ synthdid_se <- function(...) {
 #' @return Scalar bootstrap standard error.
 #' @keywords internal
 bootstrap_se <- function(estimate, replications) {
-  sqrt((replications - 1) / replications) * sd(bootstrap_sample(estimate, replications))
-}
-
-#' Draw bootstrap replicates of a synthdid estimate
-#'
-#' Resamples units with replacement while respecting treatment/control splits,
-#' recomputing the estimator for each bootstrap sample.
-#'
-#' @inheritParams bootstrap_se
-#' @param replications Number of bootstrap replications to draw.
-#'
-#' @return Numeric vector of bootstrap estimates.
-#' @keywords internal
-bootstrap_sample <- function(estimate, replications) {
   setup <- attr(estimate, "setup")
   opts <- attr(estimate, "opts")
   weights <- attr(estimate, "weights")
   if (setup$N0 == nrow(setup$Y) - 1) {
     return(NA)
   }
-  theta <- function(ind) {
-    if (all(ind <= setup$N0) || all(ind > setup$N0)) {
-      NA
-    } else {
-      weights.boot <- weights
-      weights.boot$omega <- sum_normalize(weights$omega[sort(ind[ind <= setup$N0])])
-      do.call(synthdid_estimate, c(list(Y = setup$Y[sort(ind), ], N0 = sum(ind <= setup$N0), T0 = setup$T0, X = setup$X[sort(ind), , ], weights = weights.boot), opts))
-    }
-  }
-  bootstrap.estimates <- rep(NA, replications)
-  count <- 0
-  while (count < replications) {
-    bootstrap.estimates[count + 1] <- theta(sample(1:nrow(setup$Y), replace = TRUE))
-    if (!is.na(bootstrap.estimates[count + 1])) {
-      count <- count + 1
-    }
-  }
-  bootstrap.estimates
+
+  bootstrap_estimates <- furrr::future_map_dbl(
+    seq_len(replications),
+    \(x) {
+      # repeat ensures we discard draws that pick only control or only treated units
+      repeat {
+        ind <- sample.int(nrow(setup$Y), replace = TRUE)
+        if (all(ind <= setup$N0) || all(ind > setup$N0)) {
+          next
+        }
+        sorted_ind <- sort(ind)
+        weights.boot <- weights
+        weights.boot$omega <- sum_normalize(weights$omega[sorted_ind[sorted_ind <= setup$N0]])
+
+        return(as.vector(synthdid_estimate(
+          Y = setup$Y[sorted_ind, ],
+          N0 = sum(sorted_ind <= setup$N0),
+          T0 = setup$T0,
+          X = setup$X[sorted_ind, , ],
+          weights = weights.boot,
+          zeta.omega = opts$zeta.omega,
+          zeta.lambda = opts$zeta.lambda,
+          omega.intercept = opts$omega.intercept,
+          lambda.intercept = opts$lambda.intercept,
+          update.omega = opts$update.omega,
+          update.lambda = opts$update.lambda,
+          min.decrease = opts$min.decrease,
+          max.iter = opts$max.iter
+        )))
+      }
+    },
+    .options = furrr::furrr_options(seed = TRUE)
+  )
+
+  sqrt((replications - 1) / replications) * sd(bootstrap_estimates)
 }
 
 
@@ -122,40 +125,35 @@ jackknife_se <- function(estimate, weights = attr(estimate, "weights")) {
   if (setup$N0 == nrow(setup$Y) - 1 || (!is.null(weights) && sum(weights$omega != 0) == 1)) {
     return(NA)
   }
-  theta <- function(ind) {
-    weights.jk <- weights
-    if (!is.null(weights)) {
-      weights.jk$omega <- sum_normalize(weights$omega[ind[ind <= setup$N0]])
-    }
-    estimate.jk <- do.call(
-      synthdid_estimate,
-      c(list(Y = setup$Y[ind, ], N0 = sum(ind <= setup$N0), T0 = setup$T0, X = setup$X[ind, , ], weights = weights.jk), opts)
-    )
-  }
-  jackknife(1:nrow(setup$Y), theta)
-}
+  jackknife_estimates <- furrr::future_map_dbl(
+    seq_len(nrow(setup$Y)),
+    \(i) {
+      ind <- seq_len(nrow(setup$Y))[-i]
+      weights.jk <- weights
+      if (!is.null(weights)) {
+        weights.jk$omega <- sum_normalize(weights$omega[ind[ind <= setup$N0]])
+      }
+      as.vector(synthdid_estimate(
+        Y = setup$Y[ind, ],
+        N0 = sum(ind <= setup$N0),
+        T0 = setup$T0,
+        X = setup$X[ind, , ],
+        weights = weights.jk,
+        zeta.omega = opts$zeta.omega,
+        zeta.lambda = opts$zeta.lambda,
+        omega.intercept = opts$omega.intercept,
+        lambda.intercept = opts$lambda.intercept,
+        update.omega = opts$update.omega,
+        update.lambda = opts$update.lambda,
+        min.decrease = opts$min.decrease,
+        max.iter = opts$max.iter
+      ))
+    },
+    .options = furrr::furrr_options(seed = TRUE)
+  )
 
-#' Jackknife standard error of a scalar estimator
-#'
-#' Computes the leave-one-out jackknife standard error for a statistic
-#' calculated by \code{theta}.
-#'
-#' @param x Vector of sample indices.
-#' @param theta Function returning a scalar estimate when applied to a subset of
-#'   \code{x}.
-#'
-#' @return Numeric jackknife standard error.
-#' @importFrom stats var
-#' @keywords internal
-jackknife <- function(x, theta) {
-  n <- length(x)
-  u <- rep(0, n)
-  for (i in 1:n) {
-    u[i] <- theta(x[-i])
-  }
-  jack.se <- sqrt(((n - 1) / n) * (n - 1) * var(u))
-
-  jack.se
+  n <- nrow(setup$Y)
+  sqrt(((n - 1) / n) * (n - 1) * stats::var(jackknife_estimates))
 }
 
 
