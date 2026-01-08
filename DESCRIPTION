@@ -20,7 +20,9 @@ Imports:
     graphics,
     methods,
     ggplot2,
-    grid
+    grid,
+    furrr,
+    future
 LinkingTo:
     Rcpp
 License: GPL (>= 2) | BSD_3_clause + file LICENSE
@@ -31,8 +33,6 @@ RoxygenNote: 7.3.3
 Suggests:
     testthat (>= 3.0.0),
     CVXR,
-    future,
-    furrr,
     bench
 URL: https://github.com/synth-inference/synthdid
 BugReports: https://github.com/synth-inference/synthdid/issues
