@@ -29,8 +29,10 @@ ragg_png = function(..., res = 192) {
 knitr::opts_chunk$set(dev = "ragg_png", fig.ext = "png")
 ```
 
-```{r setup, echo=FALSE}
+```{r setup, echo=FALSE, eval=FALSE}
 # Install packages from "session-info" file:
+# These packages need to be installed manually before running this vignette locally.
+# The vignette is not built automatically on CI due to MCPanel GitHub dependency.
 install.packages(c('doFuture', 'future.batchtools', 'rngtools'))
 install.packages(c('dplyr', 'tidyr', 'tibble', 'ggplot2', 'devtools', 'xtable'))
 

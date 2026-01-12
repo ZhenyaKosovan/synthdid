@@ -1,4 +1,12 @@
-url: ~
+url: https://zhenyakosovan.github.io/synthdid/
 template:
   bootstrap: 5
+
+articles:
+  - title: Getting Started
+    navbar: ~
+    contents:
+    - synthdid
+    - more-plotting
+    - benchmarking-parallel
 

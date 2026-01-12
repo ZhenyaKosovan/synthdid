@@ -31,6 +31,11 @@ jobs:
         with:
           use-public-rspm: true
 
+      - name: Install system dependencies for ragg and gifski
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libharfbuzz-dev libfribidi-dev libpng-dev libtiff-dev libjpeg-dev cargo
+
       - uses: r-lib/actions/setup-r-dependencies@v2
         with:
           extra-packages: any::pkgdown, local::.

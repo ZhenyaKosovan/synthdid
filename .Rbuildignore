@@ -13,3 +13,5 @@
 ^src/.*\.o$
 ^src/.*\.so$
 ^README\.Rmd$
+^\.claude$
+^LICENSE\.md$

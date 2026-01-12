@@ -21,8 +21,7 @@ Imports:
     methods,
     ggplot2,
     grid,
-    furrr,
-    future
+    furrr
 LinkingTo:
     Rcpp
 License: GPL (>= 2) | BSD_3_clause + file LICENSE
@@ -33,7 +32,18 @@ RoxygenNote: 7.3.3
 Suggests:
     testthat (>= 3.0.0),
     CVXR,
-    bench
+    bench,
+    knitr,
+    rmarkdown,
+    ragg,
+    scales,
+    dplyr,
+    tidyr,
+    tibble,
+    purrr,
+    xtable,
+    gifski
 URL: https://github.com/synth-inference/synthdid
 BugReports: https://github.com/synth-inference/synthdid/issues
 Config/testthat/edition: 3
+VignetteBuilder: knitr
