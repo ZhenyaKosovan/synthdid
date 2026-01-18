@@ -40,8 +40,8 @@ plot(tau.hat)
 \seealso{
 Useful links:
 \itemize{
-  \item \url{https://github.com/synth-inference/synthdid}
-  \item Report bugs at \url{https://github.com/synth-inference/synthdid/issues}
+  \item \url{https://github.com/ZhenyaKosovan/synthdid}
+  \item Report bugs at \url{https://github.com/ZhenyaKosovan/synthdid/issues}
 }
 
 }
