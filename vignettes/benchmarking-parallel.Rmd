@@ -150,3 +150,49 @@ results %>%
 -   `furrr` already uses deterministic RNG streams when `.options = furrr::furrr_options(seed = TRUE)` is set (as in `synthdid`), so parallel runs remain reproducible given the same seed.
 -   `future::multisession` may be unavailable or limited on some systems (e.g., CRAN macOS/Windows builders). In that case, `future` will fall back to a sequential plan.
 -   Adjust `replications` and `trials` to balance runtime and precision when benchmarking on your hardware.
+
+## BLAS Threading Considerations
+
+The `synthdid` package uses RcppArmadillo for optimized linear algebra, which relies on your system's BLAS (Basic Linear Algebra Subprograms) library. Some BLAS implementations are multi-threaded, which can conflict with `future::multisession` parallelism.
+
+### Default BLAS by Platform
+
+| Platform | Default BLAS | Multi-threaded? |
+|----------|--------------|-----------------|
+| **macOS** | Apple Accelerate | Yes |
+| **Windows** | Reference BLAS | No |
+| **Linux** | Usually reference BLAS | No (unless OpenBLAS installed) |
+
+### Avoiding Thread Oversubscription
+
+When using `future::multisession` with multiple workers, each worker runs independent `synthdid_estimate` calls. If your BLAS is also multi-threaded, you may experience **thread oversubscription**:
+```
+4 workers × 4 BLAS threads = 16 threads competing for 8 cores → slower!
+```
+
+**Recommendation:** Disable BLAS threading when using multiple workers:
+
+```{r blas-setup, eval = FALSE}
+# Disable BLAS threading (run before future::plan)
+Sys.setenv(
+
+  OPENBLAS_NUM_THREADS = 1,    # Linux with OpenBLAS
+  MKL_NUM_THREADS = 1,         # Intel MKL
+
+  VECLIB_MAXIMUM_THREADS = 1,  # macOS Accelerate
+
+  OMP_NUM_THREADS = 1          # General OpenMP
+)
+
+# Now set up parallel workers
+future::plan(future::multisession, workers = 4)
+```
+
+### When to Use Multi-threaded BLAS
+
+Multi-threaded BLAS is beneficial when:
+
+- Running a **single** `synthdid_estimate` call (no `future` parallelism)
+- Working with **large** datasets (N0, T0 > 1000)
+
+For bootstrap/jackknife standard errors with many replications on moderate-sized data, **worker parallelism** (many single-threaded workers) typically outperforms **BLAS parallelism** (fewer workers with multi-threaded BLAS).
