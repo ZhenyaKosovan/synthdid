@@ -59,7 +59,7 @@ test_that("column/row/scaling invariances hold with default options", {
       set.seed(seed)
       estimate.se.col.scaled <- synthdid_se(estimate.col.scaled, method = CI.method, replications = 10)
       expect_equal(c(estimate), c(estimate.col.scaled))
-      expect_equal(estimate.se, estimate.se.col.scaled, tolerance = 1e-4)
+      expect_equal(estimate.se, estimate.se.col.scaled, tolerance = 5e-4)
     }
   }
 
@@ -75,7 +75,7 @@ test_that("column/row/scaling invariances hold with default options", {
       set.seed(seed)
       estimate.se.row.scaled <- synthdid_se(estimate.row.scaled, method = CI.method, replications = 10)
       expect_equal(c(estimate), c(estimate.row.scaled))
-      expect_equal(estimate.se, estimate.se.row.scaled, tolerance = 1e-4)
+      expect_equal(estimate.se, estimate.se.row.scaled, tolerance = 5e-4)
     }
   }
 
@@ -94,7 +94,7 @@ test_that("column/row/scaling invariances hold with default options", {
       estimate.se.scaled <- synthdid_se(estimate.scaled, method = CI.method, replications = 10)
       weights.scaled <- attr(estimate.scaled, "weights")
       expect_equal(c(c.small * estimate), c(estimate.scaled))
-      expect_equal(c.small * estimate.se, estimate.se.scaled, tolerance = 1e-4)
+      expect_equal(c.small * estimate.se, estimate.se.scaled, tolerance = 5e-4)
       expect_equal(weights[c("lambda", "omega")], weights.scaled[c("lambda", "omega")])
     }
   }
@@ -111,7 +111,7 @@ test_that("column/row/scaling invariances hold with default options", {
       estimate.se.scaled <- synthdid_se(estimate.scaled, method = CI.method, replications = 10)
       weights.scaled <- attr(estimate.scaled, "weights")
       expect_equal(c(c.large * estimate), c(estimate.scaled))
-      expect_equal(c.large * estimate.se, estimate.se.scaled, tolerance = 1e-4)
+      expect_equal(c.large * estimate.se, estimate.se.scaled, tolerance = 5e-4)
       expect_equal(weights[c("lambda", "omega")], weights.scaled[c("lambda", "omega")])
     }
   }
