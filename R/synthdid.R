@@ -41,13 +41,13 @@ sparsify_function <- function(v) {
 #'   If estimate_se = TRUE, attributes 'se', 'se_method', and 'se_status' reflect the requested standard error computation.
 #' @export synthdid_estimate
 synthdid_estimate <- function(Y, N0, T0, X = array(dim = c(dim(Y), 0)),
-                              noise.level = sd(apply(Y[1:N0, 1:T0], 1, diff)),
+                              noise.level = NULL,
                               eta.omega = ((nrow(Y) - N0) * (ncol(Y) - T0))^(1 / 4), eta.lambda = 1e-6,
-                              zeta.omega = eta.omega * noise.level, zeta.lambda = eta.lambda * noise.level,
+                              zeta.omega = NULL, zeta.lambda = NULL,
                               omega.intercept = TRUE, lambda.intercept = TRUE,
                               weights = list(omega = NULL, lambda = NULL),
                               update.omega = is.null(weights$omega), update.lambda = is.null(weights$lambda),
-                              min.decrease = 1e-5 * noise.level, max.iter = 1e4,
+                              min.decrease = NULL, max.iter = 1e4,
                               sparsify = sparsify_function,
                               max.iter.pre.sparsify = 100,
                               estimate_se = FALSE,
@@ -61,6 +61,30 @@ synthdid_estimate <- function(Y, N0, T0, X = array(dim = c(dim(Y), 0)),
   if (length(dim(X)) == 2) {
     dim(X) <- c(dim(X), 1)
   }
+  if (is.null(noise.level)) {
+    if (T0 < 2 || N0 < 1) {
+      warning("noise.level is undefined with fewer than 2 pre-treatment periods; using 0.")
+      noise.level <- 0
+    } else {
+      diffs <- Y[1:N0, 2:T0, drop = FALSE] - Y[1:N0, 1:(T0 - 1), drop = FALSE]
+      noise.level <- stats::sd(c(diffs))
+      if (!is.finite(noise.level)) {
+        warning("noise.level could not be computed; using 0.")
+        noise.level <- 0
+      }
+    }
+  } else if (!is.finite(noise.level) || length(noise.level) != 1) {
+    stop("noise.level must be a finite scalar.")
+  }
+  if (is.null(zeta.omega)) {
+    zeta.omega <- eta.omega * noise.level
+  }
+  if (is.null(zeta.lambda)) {
+    zeta.lambda <- eta.lambda * noise.level
+  }
+  if (is.null(min.decrease)) {
+    min.decrease <- 1e-5 * noise.level
+  }
   if (is.null(sparsify)) {
     max.iter.pre.sparsify <- max.iter
   }
@@ -73,12 +97,12 @@ synthdid_estimate <- function(Y, N0, T0, X = array(dim = c(dim(Y), 0)),
     weights$omega.vals <- NULL
     if (update.lambda) {
       Yc <- collapsed.form(Y, N0, T0)
-      lambda.opt <- sc.weight.fw(Yc[1:N0, ],
+      lambda.opt <- sc.weight.fw(Yc[1:N0, , drop = FALSE],
         zeta = zeta.lambda, intercept = lambda.intercept, lambda = weights$lambda,
         min.decrease = min.decrease, max.iter = max.iter.pre.sparsify
       )
       if (!is.null(sparsify)) {
-        lambda.opt <- sc.weight.fw(Yc[1:N0, ],
+        lambda.opt <- sc.weight.fw(Yc[1:N0, , drop = FALSE],
           zeta = zeta.lambda, intercept = lambda.intercept, lambda = sparsify(lambda.opt$lambda),
           min.decrease = min.decrease, max.iter = max.iter
         )
@@ -89,12 +113,12 @@ synthdid_estimate <- function(Y, N0, T0, X = array(dim = c(dim(Y), 0)),
     }
     if (update.omega) {
       Yc <- collapsed.form(Y, N0, T0)
-      omega.opt <- sc.weight.fw(t(Yc[, 1:T0]),
+      omega.opt <- sc.weight.fw(t(Yc[, 1:T0, drop = FALSE]),
         zeta = zeta.omega, intercept = omega.intercept, lambda = weights$omega,
         min.decrease = min.decrease, max.iter = max.iter.pre.sparsify
       )
       if (!is.null(sparsify)) {
-        omega.opt <- sc.weight.fw(t(Yc[, 1:T0]),
+        omega.opt <- sc.weight.fw(t(Yc[, 1:T0, drop = FALSE]),
           zeta = zeta.omega, intercept = omega.intercept, lambda = sparsify(omega.opt$lambda),
           min.decrease = min.decrease, max.iter = max.iter
         )

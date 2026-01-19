@@ -114,11 +114,16 @@ panel.matrices = function(panel, unit = 1, time = 2, outcome = 3, treatment = 4,
              dimnames = list(unique(panel[,unit]), unique(panel[,time])))
   W = matrix(panel[,treatment], num.units, num.years, byrow = TRUE,
              dimnames = list(unique(panel[,unit]), unique(panel[,time])))
-  w = apply(W, 1, any)                         # indicator for units that are treated at any time
-  T0 = unname(which(apply(W, 2, any))[1]-1)    # last period nobody is treated
+  W_binary <- W != 0
+  w = rowSums(W_binary) > 0                    # indicator for units that are treated at any time
+  T0 = unname(which(colSums(W_binary) > 0)[1] - 1) # last period nobody is treated
   N0 = sum(!w)
 
-  if(! (all(W[!w,] == 0) && all(W[,1:T0] == 0) && all(W[w, (T0+1):ncol(Y)]==1))) {
+  if (T0 < 1) {
+    stop("Treatment starts in the first period; at least one pre-treatment period is required.")
+  }
+
+  if(! (all(W_binary[!w,] == 0) && all(W_binary[,1:T0] == 0) && all(W_binary[w, (T0+1):ncol(Y)]==1))) {
     stop("The package cannot use this data. Treatment adoption is not simultaneous.")
   }
 
@@ -135,9 +140,18 @@ panel.matrices = function(panel, unit = 1, time = 2, outcome = 3, treatment = 4,
 #' @return its column names interpreted as Dates if possible
 #' @export
 timesteps = function(Y) {
-    tryCatch({
-	as.Date(colnames(Y))
-    }, error = function(e) { colnames(Y) })
+  labels <- colnames(Y)
+  if (is.null(labels)) {
+    return(labels)
+  }
+  parsed <- tryCatch(
+    suppressWarnings(as.Date(labels)),
+    error = function(e) rep(NA, length(labels))
+  )
+  if (length(parsed) == 0 || any(is.na(parsed))) {
+    return(labels)
+  }
+  parsed
 }
 
 

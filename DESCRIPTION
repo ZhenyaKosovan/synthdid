@@ -15,6 +15,7 @@ Depends:
 Imports:
     mvtnorm,
     Rcpp,
+    RcppArmadillo,
     stats,
     utils,
     graphics,
@@ -23,7 +24,8 @@ Imports:
     grid,
     furrr
 LinkingTo:
-    Rcpp
+    Rcpp,
+    RcppArmadillo
 License: GPL (>= 2) | BSD_3_clause + file LICENSE
 Encoding: UTF-8
 LazyData: true
