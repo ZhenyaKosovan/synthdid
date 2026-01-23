@@ -44,7 +44,7 @@ Suggests:
     tibble,
     purrr,
     xtable,
-    RhpcBLASctl
+    RhpcBLASctl,
     gifski
 URL: https://zhenyakosovan.github.io/synthdid/, https://github.com/ZhenyaKosovan/synthdid
 BugReports: https://github.com/ZhenyaKosovan/synthdid/issues
