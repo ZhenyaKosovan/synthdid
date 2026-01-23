@@ -39,6 +39,7 @@ plot(tau.hat)
 \seealso{
 Useful links:
 \itemize{
+  \item \url{https://zhenyakosovan.github.io/synthdid/}
   \item \url{https://github.com/ZhenyaKosovan/synthdid}
   \item Report bugs at \url{https://github.com/ZhenyaKosovan/synthdid/issues}
 }

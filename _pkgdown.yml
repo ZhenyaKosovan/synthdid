@@ -8,4 +8,6 @@ articles:
     contents:
     - synthdid
     - more-plotting
+    - formula-interface
+    - parallel-processing
     - benchmarking-parallel
