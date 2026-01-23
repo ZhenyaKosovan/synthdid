@@ -19,6 +19,18 @@ ragg_png = function(..., res = 192) {
 knitr::opts_chunk$set(dev = "ragg_png", fig.ext = "png")
 ```
 
+::: {.callout-note}
+## Note on Interface
+
+This vignette uses the classic matrix-based interface. All plotting functions work identically with the new formula interface introduced in Version 2.0. See `vignette("formula-interface")` for details on the modern interface.
+
+```r
+# Both interfaces work with all plotting functions
+result <- synthdid(PacksPerCapita ~ treated, data, index = c("State", "Year"))
+plot(result)  # Same plots!
+```
+:::
+
 # Dates as Timesteps
 Sometimes we want to use dates as timesteps.
 We store timesteps as the colnames of Y, and colnames can't be Date objects,

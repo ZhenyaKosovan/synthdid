@@ -42,10 +42,79 @@ summary.synthdid_estimate = function(object, weight.digits=3, fast=FALSE, ...) {
   } else {
     sqrt(vcov(object, method = desired_method))
   }
-  list(estimate = c(object),
+
+  summary_obj <- list(
+    estimate = c(object),
     se = se_val,
     controls = round(synthdid_controls(object, weight.type='omega'),  digits=weight.digits),
     periods  = round(synthdid_controls(object, weight.type='lambda'), digits=weight.digits),
     dimensions = c( N1 = nrow(Y(object))-N0, N0 = N0, N0.effective = round(1 / sum(omega(object)^2),  weight.digits),
-		    T1 = ncol(Y(object))-T0, T0 = T0, T0.effective = round(1 / sum(lambda(object)^2), weight.digits)))
+		    T1 = ncol(Y(object))-T0, T0 = T0, T0.effective = round(1 / sum(lambda(object)^2), weight.digits))
+  )
+
+  # Add formula interface info if available
+  if (inherits(object, "synthdid")) {
+    summary_obj$call <- attr(object, "call")
+    summary_obj$formula <- attr(object, "formula")
+  }
+
+  class(summary_obj) <- c("summary.synthdid_estimate", "summary.synthdid")
+  summary_obj
+}
+
+
+#' Print summary of synthdid object
+#' @param x A summary.synthdid_estimate object
+#' @param ... Additional arguments
+#' @importFrom stats printCoefmat
+#' @export
+print.summary.synthdid_estimate <- function(x, ...) {
+  # Print call if available
+  if (!is.null(x$call)) {
+    cat("Call:\n")
+    print(x$call)
+    cat("\n")
+  }
+
+  # Print coefficient table
+  tau <- x$estimate
+  se <- x$se
+  t_stat <- tau / se
+  p_value <- 2 * pnorm(-abs(t_stat))
+
+  cat("Treatment Effect Estimate:\n")
+  coef_table <- cbind(
+    Estimate = tau,
+    `Std. Error` = se,
+    `t value` = t_stat,
+    `Pr(>|t|)` = p_value
+  )
+  rownames(coef_table) <- "treated"
+  printCoefmat(coef_table, digits = 4, signif.stars = TRUE)
+  cat("\n")
+
+  # Print dimensions
+  cat("Dimensions:\n")
+  dim_df <- data.frame(
+    " " = c("Treated units:", "Control units:", "Effective controls:",
+           "Post-treatment periods:", "Pre-treatment periods:", "Effective periods:"),
+    Value = c(x$dimensions["N1"], x$dimensions["N0"], x$dimensions["N0.effective"],
+              x$dimensions["T1"], x$dimensions["T0"], x$dimensions["T0.effective"]),
+    check.names = FALSE,
+    stringsAsFactors = FALSE
+  )
+  print(dim_df, row.names = FALSE, right = FALSE)
+  cat("\n")
+
+  # Print top weights
+  cat("Top Control Units (omega weights):\n")
+  n_show <- min(5, nrow(x$controls))
+  print(head(x$controls, n_show))
+  cat("\n")
+
+  cat("Top Time Periods (lambda weights):\n")
+  n_show_periods <- min(5, nrow(x$periods))
+  print(head(x$periods, n_show_periods))
+
+  invisible(x)
 }

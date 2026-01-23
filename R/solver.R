@@ -187,17 +187,17 @@ update.weights <- function(Y,
                            N0,
                            T0,
                            update.lambda,
-                           update.omega,
-                           zeta.lambda,
-                           zeta.omega) {
+  update.omega,
+  zeta.lambda,
+  zeta.omega) {
   Y.lambda <- if (lambda.intercept) {
-    sweep(Y[1:N0, ], 2, colMeans(Y[1:N0, ]))
+    sweep(Y[1:N0, , drop = FALSE], 2, colMeans(Y[1:N0, , drop = FALSE]))
   } else {
-    Y[1:N0, ]
+    Y[1:N0, , drop = FALSE]
   }
   if (update.lambda) {
     lambda <- fw_step_cpp(
-      Y.lambda[, 1:T0],
+      Y.lambda[, 1:T0, drop = FALSE],
       lambda,
       Y.lambda[, T0 + 1],
       N0 * Re(zeta.lambda^2)
@@ -206,12 +206,12 @@ update.weights <- function(Y,
   err.lambda <- Y.lambda %*% c(lambda, -1)
 
   Y.omega <- if (omega.intercept) {
-    sweep(t(Y[, 1:T0]), 2, colMeans(t(Y[, 1:T0])))
+    sweep(t(Y[, 1:T0, drop = FALSE]), 2, colMeans(t(Y[, 1:T0, drop = FALSE])))
   } else {
-    t(Y[, 1:T0])
+    t(Y[, 1:T0, drop = FALSE])
   }
   if (update.omega) {
-    omega <- fw_step_cpp(Y.omega[, 1:N0], omega, Y.omega[, N0 + 1], T0 * Re(zeta.omega^2))
+    omega <- fw_step_cpp(Y.omega[, 1:N0, drop = FALSE], omega, Y.omega[, N0 + 1], T0 * Re(zeta.omega^2))
   }
   err.omega <- Y.omega %*% c(omega, -1)
 

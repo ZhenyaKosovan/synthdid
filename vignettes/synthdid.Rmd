@@ -21,8 +21,31 @@ library(ggplot2)
 set.seed(12345)
 ```
 
-# Example use 
-We estimate the effect of California Proposition 99 on cigarette consumption
+::: {.callout-note}
+## New Formula Interface Available!
+
+**Version 2.0** introduces a modern formula-based interface similar to `lm()` and `plm()`.
+
+For the new interface, see `vignette("formula-interface")`. This vignette demonstrates the classic matrix-based interface, which remains fully supported.
+
+**Quick comparison:**
+
+```r
+# Classic interface (this vignette)
+setup <- panel.matrices(california_prop99)
+result <- synthdid_estimate(setup$Y, setup$N0, setup$T0)
+
+# New formula interface
+result <- synthdid(PacksPerCapita ~ treated,
+                   data = california_prop99,
+                   index = c("State", "Year"))
+```
+
+Both interfaces produce identical results!
+:::
+
+# Example use
+We estimate the effect of California Proposition 99 on cigarette consumption using the **classic matrix-based interface**. For the modern formula interface, see `vignette("formula-interface")`.
 
 ## Standard Errors
 We have only one treated unit (California), so the only implemented method to estimate

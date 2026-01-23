@@ -1,0 +1,457 @@
+---
+title: "Modern Formula Interface for synthdid"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Modern Formula Interface for synthdid}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r echo=FALSE}
+knitr::opts_chunk$set(collapse = TRUE, comment = "#>")
+ragg_png = function(..., res = 192) {
+  ragg::agg_png(..., res = res, units = "in")
+}
+knitr::opts_chunk$set(dev = "ragg_png", fig.ext = "png")
+```
+
+```{r setup, message=FALSE}
+library(synthdid)
+library(ggplot2)
+set.seed(12345)
+```
+
+# Introduction
+
+Version 2.0 of the `synthdid` package introduces a modern formula-based interface similar to `lm()`, `plm()`, and `glm()`. This vignette demonstrates how to use the new interface while maintaining full backward compatibility with existing code.
+
+## Why a New Interface?
+
+The new formula interface offers several advantages:
+
+1. **More intuitive**: Follows standard R modeling conventions
+2. **Less code**: Single function call instead of multiple steps
+3. **Better integration**: Works with standard R tools (`summary()`, `coef()`, `confint()`)
+4. **Easier comparison**: Switch between estimators with `update()`
+5. **Self-documenting**: Formula syntax is clearer than matrix indexing
+
+## Backward Compatibility
+
+**All existing code continues to work!** The original matrix-based interface is fully supported:
+
+```{r}
+# Old interface (still works)
+data("california_prop99")
+setup <- panel.matrices(california_prop99)
+old_result <- synthdid_estimate(setup$Y, setup$N0, setup$T0)
+old_result
+```
+
+# Basic Usage
+
+## Simple Estimation
+
+The new interface uses a formula to specify the outcome and treatment variables:
+
+```{r}
+# New formula interface
+result <- synthdid(PacksPerCapita ~ treated,
+                   data = california_prop99,
+                   index = c("State", "Year"))
+result
+```
+
+The formula `PacksPerCapita ~ treated` specifies:
+- **Left side**: Outcome variable (`PacksPerCapita`)
+- **Right side**: Treatment indicator (`treated`)
+
+The `index` argument specifies the panel structure:
+- First element: Unit identifier (`State`)
+- Second element: Time identifier (`Year`)
+
+## Standard R Methods
+
+The new interface returns objects that work with standard R functions:
+
+```{r}
+# Extract treatment effect
+coef(result)
+
+# Get confidence intervals (requires SE computation)
+# confint(result)  # Would compute SE automatically
+
+# Summary statistics
+summary(result, fast = TRUE)  # Use fast=TRUE for jackknife SE
+```
+
+# Comparing Estimators
+
+One of the most powerful features is the ability to easily compare different panel data estimators.
+
+## Method Selection
+
+You can choose the estimator at estimation time:
+
+```{r}
+# Synthetic Difference-in-Differences (default)
+synthdid_est <- synthdid(PacksPerCapita ~ treated,
+                         data = california_prop99,
+                         index = c("State", "Year"),
+                         method = "synthdid")
+
+# Pure Difference-in-Differences
+did_est <- synthdid(PacksPerCapita ~ treated,
+                    data = california_prop99,
+                    index = c("State", "Year"),
+                    method = "did")
+
+# Synthetic Control
+sc_est <- synthdid(PacksPerCapita ~ treated,
+                   data = california_prop99,
+                   index = c("State", "Year"),
+                   method = "sc")
+```
+
+## Updating Models
+
+The `update()` function allows you to modify an existing model:
+
+```{r}
+# Start with synthdid
+result <- synthdid(PacksPerCapita ~ treated,
+                   data = california_prop99,
+                   index = c("State", "Year"))
+
+# Switch to DID
+did_result <- update(result, method = "did")
+
+# Switch to SC
+sc_result <- update(result, method = "sc")
+```
+
+## Side-by-Side Comparison
+
+```{r}
+# Compare all three estimators
+comparison <- data.frame(
+  Method = c("SynthDID", "DID", "SC"),
+  Estimate = c(coef(synthdid_est), coef(did_est), coef(sc_est))
+)
+print(comparison)
+```
+
+The estimates differ because each method makes different assumptions:
+- **SynthDID**: Weights both units and time periods
+- **DID**: Equal weights on all control units and time periods
+- **SC**: Weights only control units (equal time weights)
+
+# Standard Errors
+
+## Computing Standard Errors
+
+You can request standard errors at estimation time:
+
+```{r eval=FALSE}
+# Bootstrap SE (most reliable, but slow)
+result_boot <- synthdid(PacksPerCapita ~ treated,
+                        data = california_prop99,
+                        index = c("State", "Year"),
+                        se = TRUE,
+                        se_method = "bootstrap",
+                        se_replications = 200)
+
+# Jackknife SE (faster)
+result_jack <- synthdid(PacksPerCapita ~ treated,
+                        data = california_prop99,
+                        index = c("State", "Year"),
+                        se = TRUE,
+                        se_method = "jackknife")
+
+# Placebo SE (for single treated unit)
+result_placebo <- synthdid(PacksPerCapita ~ treated,
+                           data = california_prop99,
+                           index = c("State", "Year"),
+                           se = TRUE,
+                           se_method = "placebo",
+                           se_replications = 100)
+```
+
+## Confidence Intervals
+
+Once standard errors are computed, you can easily get confidence intervals:
+
+```{r eval=FALSE}
+# 95% confidence interval
+confint(result_jack, level = 0.95)
+
+# 90% confidence interval
+confint(result_jack, level = 0.90)
+```
+
+## Parallel Processing
+
+For faster SE computation with bootstrap or placebo methods, use parallel processing:
+
+```{r eval=FALSE}
+library(future)
+
+# Set up parallel processing
+plan(multisession, workers = 4)
+
+# Estimate with parallel SE computation
+result <- synthdid(PacksPerCapita ~ treated,
+                   data = california_prop99,
+                   index = c("State", "Year"),
+                   se = TRUE,
+                   se_method = "bootstrap",
+                   se_replications = 200)
+
+# Reset to sequential
+plan(sequential)
+```
+
+**For a comprehensive guide on parallel processing**, including performance comparisons, best practices, and when to use sequential vs parallel, see `vignette("parallel-processing")`.
+
+### Thread Management
+
+The package automatically manages BLAS threads to prevent **thread oversubscription** when using parallel workers. Without proper management:
+
+- **Bad scenario**: 4 parallel workers × 8 BLAS threads = 32 threads on a 4-core machine
+- **Performance**: Severe degradation due to context switching
+
+The package automatically:
+1. Detects when parallel processing is active
+2. Sets BLAS to single-threaded mode for each worker
+3. Restores BLAS threads after completion
+
+**Result**: 4 parallel workers × 1 BLAS thread = 4 threads (optimal for 4 cores)
+
+For best thread control, install the optional `RhpcBLASctl` package:
+
+```{r eval=FALSE}
+install.packages("RhpcBLASctl")
+```
+
+This provides reliable control over OpenBLAS and MKL thread counts. Without it, the package falls back to environment variables which may require an R restart to take effect.
+
+# Predictions and Diagnostics
+
+## Treatment Effect by Period
+
+The `predict()` function extracts the treatment effect for each post-treatment period:
+
+```{r}
+# Effect curve
+effect_curve <- predict(result, type = "effect")
+print(effect_curve)
+```
+
+```{r fig.width=7, fig.height=4}
+# Plot effect curve
+plot(effect_curve, type = "b",
+     xlab = "Post-Treatment Period",
+     ylab = "Treatment Effect",
+     main = "Treatment Effect Over Time")
+abline(h = 0, lty = 2, col = "gray")
+```
+
+## Counterfactual Predictions
+
+What would have happened to California without Prop 99?
+
+```{r}
+# Counterfactual outcomes for treated units
+counterfactual <- predict(result, type = "counterfactual")
+
+# Show first 5 periods
+counterfactual[, 1:5]
+```
+
+## Actual Treated Outcomes
+
+```{r}
+# Actual observed outcomes for treated units
+treated_outcomes <- predict(result, type = "treated")
+
+# Show first 5 periods
+treated_outcomes[, 1:5]
+```
+
+## Residuals
+
+Extract residuals from different parts of the model:
+
+```{r}
+# Control unit residuals
+resid_control <- residuals(result, type = "control")
+cat("Control residuals dimension:", dim(resid_control), "\n")
+cat("Mean absolute residual:", mean(abs(resid_control)), "\n")
+
+# Pre-treatment period residuals
+resid_pretreat <- residuals(result, type = "pretreatment")
+cat("Pre-treatment residuals dimension:", dim(resid_pretreat), "\n")
+
+# All residuals
+resid_all <- residuals(result, type = "all")
+cat("All residuals dimension:", dim(resid_all), "\n")
+```
+
+## Fitted Values
+
+```{r}
+# Fitted values for all units and periods
+fitted_vals <- fitted(result)
+cat("Fitted values dimension:", dim(fitted_vals), "\n")
+```
+
+# Covariate Adjustment
+
+The formula interface supports time-varying covariates using the `|` operator:
+
+```{r eval=FALSE}
+# With covariates (if available in your data)
+result_cov <- synthdid(PacksPerCapita ~ treated | log_income + unemployment,
+                       data = your_data,
+                       index = c("State", "Year"))
+```
+
+The formula `outcome ~ treatment | covariate1 + covariate2` specifies:
+- **Left of ~**: Outcome variable
+- **Right of ~, left of |**: Treatment indicator
+- **Right of |**: Covariates to adjust for
+
+# Plotting
+
+All existing plotting functions work with the new interface:
+
+```{r fig.width=7, fig.height=4}
+# Standard synthdid plot
+plot(result)
+```
+
+```{r fig.width=7, fig.height=4}
+# Control unit contribution plot
+synthdid_units_plot(result)
+```
+
+```{r fig.width=7, fig.height=4}
+# Check pre-treatment parallel trends
+plot(result, overlay = 1)
+```
+
+# Working with Model Objects
+
+## Extracting Components
+
+The new interface creates rich model objects with many components:
+
+```{r}
+# Get the call
+attr(result, "call")
+
+# Get the formula
+attr(result, "formula")
+
+# Get panel index
+attr(result, "index")
+
+# Get weights
+weights <- attr(result, "weights")
+names(weights)
+
+# Lambda (time weights)
+head(weights$lambda)
+
+# Omega (unit weights)
+head(weights$omega)
+```
+
+## Model Information
+
+```{r}
+# Data information
+data_info <- attr(result, "data_info")
+data_info
+```
+
+# Advanced Usage
+
+## Custom Options
+
+You can pass any option from `synthdid_estimate()` to the formula interface:
+
+```{r eval=FALSE}
+result <- synthdid(PacksPerCapita ~ treated,
+                   data = california_prop99,
+                   index = c("State", "Year"),
+                   # Custom regularization
+                   eta.omega = 1e-4,
+                   eta.lambda = 1e-4,
+                   # Convergence criteria
+                   max.iter = 10000,
+                   min.decrease = 1e-6,
+                   # Intercepts
+                   omega.intercept = TRUE,
+                   lambda.intercept = TRUE)
+```
+
+## Extracting Full Setup
+
+If you need the underlying matrix representation:
+
+```{r}
+# Get the setup from result
+setup <- attr(result, "setup")
+names(setup)
+
+# Outcome matrix
+dim(setup$Y)
+
+# Number of control units
+setup$N0
+
+# Number of pre-treatment periods
+setup$T0
+```
+
+# Summary
+
+## Quick Reference
+
+| Task | Command |
+|------|---------|
+| Basic estimation | `synthdid(outcome ~ treatment, data, index)` |
+| With SE | `synthdid(..., se = TRUE, se_method = "bootstrap")` |
+| With covariates | `synthdid(outcome ~ treatment \| cov1 + cov2, ...)` |
+| Method selection | `synthdid(..., method = "synthdid"/"did"/"sc")` |
+| Extract coefficient | `coef(result)` |
+| Confidence interval | `confint(result)` |
+| Summary | `summary(result)` |
+| Effect curve | `predict(result, type = "effect")` |
+| Counterfactual | `predict(result, type = "counterfactual")` |
+| Residuals | `residuals(result, type = "control")` |
+| Fitted values | `fitted(result)` |
+| Update model | `update(result, method = "did")` |
+| Plot | `plot(result)` |
+
+## Migration from Old Interface
+
+| Old Interface | New Interface |
+|---------------|---------------|
+| `setup <- panel.matrices(data)` | — |
+| `synthdid_estimate(setup$Y, setup$N0, setup$T0)` | `synthdid(outcome ~ treatment, data, index)` |
+| `c(result)` | `coef(result)` |
+| `sqrt(vcov(result))` | `confint(result)` (automatic SE) |
+| Manual effect curve calculation | `predict(result, type = "effect")` |
+| Custom comparison code | `update(result, method = "did")` |
+
+## Next Steps
+
+- See `vignette("synthdid")` for the original introduction
+- See `vignette("more-plotting")` for plotting examples
+- See `?synthdid` for complete function documentation
+- See `INTERFACE_IMPROVEMENTS.md` for implementation details
+
+# Conclusion
+
+The new formula interface makes synthdid easier to use while maintaining complete backward compatibility. Whether you're a new user or have existing code, you can take advantage of the modern interface at your own pace.

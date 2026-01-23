@@ -130,6 +130,9 @@ decompose_Y = function(Y,rank) {
 fit_ar2 <- function(E){
 	
 	T_full <- dim(E)[2]
+	if (T_full < 3) {
+		stop("fit_ar2 requires at least 3 time points.")
+	}
 	E_ts <- E[,3:T_full]
 	E_lag_1 <- E[,2:(T_full-1)]
 	E_lag_2 <- E[,1:(T_full-2)]
@@ -142,6 +145,10 @@ fit_ar2 <- function(E){
 
 	b_1 <- sum(diag(E_lag_1%*%t(E_ts)))
 	b_2 <- sum(diag(E_lag_2%*%t(E_ts)))
+
+	if (qr(matrix_factor)$rank < 2) {
+		stop("fit_ar2 requires non-degenerate residuals; singular system.")
+	}
 
 	ar_coef <- solve(matrix_factor)%*%c(b_1,b_2)
 	return(ar_coef)

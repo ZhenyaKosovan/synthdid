@@ -2,7 +2,6 @@
 % Please edit documentation in R/synthdid-package.R
 \docType{package}
 \name{synthdid-package}
-\alias{synthdid}
 \alias{synthdid-package}
 \title{synthdid: Synthetic Difference-in-Difference Estimation}
 \description{
