@@ -157,6 +157,7 @@ timesteps = function(Y) {
 
 ## define some convenient accessors
 setOldClass("synthdid_estimate")
+setOldClass("synthdid")
 #' Create a slot accessor function
 #'
 #' Builds a small closure used to define S4 generics that delegate to list-style
@@ -172,9 +173,13 @@ setGeneric('Y',      get_slot('Y'))
 setGeneric('lambda', get_slot('lambda'))
 setGeneric('omega',  get_slot('omega'))
 setMethod(weights, signature='synthdid_estimate',  definition=function(object) { attr(object, 'weights') })
+setMethod(weights, signature='synthdid',  definition=function(object) { attr(object, 'weights') })
 setMethod(Y,       signature='synthdid_estimate',  definition=function(object) { attr(object, 'setup')$Y })
+setMethod(Y,       signature='synthdid',  definition=function(object) { attr(object, 'setup')$Y })
 setMethod(lambda,  signature='synthdid_estimate',  definition=function(object) { lambda(weights(object)) })
+setMethod(lambda,  signature='synthdid',  definition=function(object) { lambda(weights(object)) })
 setMethod(omega,   signature='synthdid_estimate',  definition=function(object) { omega(weights(object))  })
+setMethod(omega,   signature='synthdid',  definition=function(object) { omega(weights(object))  })
 
 
 #' Generate a synthetic low-rank panel for testing

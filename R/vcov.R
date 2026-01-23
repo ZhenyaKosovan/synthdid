@@ -68,38 +68,41 @@ bootstrap_se <- function(estimate, replications) {
     return(NA)
   }
 
-  bootstrap_estimates <- furrr::future_map_dbl(
-    seq_len(replications),
-    \(x) {
-      # repeat ensures we discard draws that pick only control or only treated units
-      repeat {
-        ind <- sample.int(nrow(setup$Y), replace = TRUE)
-        if (all(ind <= setup$N0) || all(ind > setup$N0)) {
-          next
-        }
-        sorted_ind <- sort(ind)
-        weights.boot <- weights
-        weights.boot$omega <- sum_normalize(weights$omega[sorted_ind[sorted_ind <= setup$N0]])
+  # Use BLAS thread management to prevent oversubscription with parallel workers
+  bootstrap_estimates <- with_blas_thread_management({
+    furrr::future_map_dbl(
+      seq_len(replications),
+      \(x) {
+        # repeat ensures we discard draws that pick only control or only treated units
+        repeat {
+          ind <- sample.int(nrow(setup$Y), replace = TRUE)
+          if (all(ind <= setup$N0) || all(ind > setup$N0)) {
+            next
+          }
+          sorted_ind <- sort(ind)
+          weights.boot <- weights
+          weights.boot$omega <- sum_normalize(weights$omega[sorted_ind[sorted_ind <= setup$N0]])
 
-        return(as.vector(synthdid_estimate(
-          Y = setup$Y[sorted_ind, ],
-          N0 = sum(sorted_ind <= setup$N0),
-          T0 = setup$T0,
-          X = setup$X[sorted_ind, , ],
-          weights = weights.boot,
-          zeta.omega = opts$zeta.omega,
-          zeta.lambda = opts$zeta.lambda,
-          omega.intercept = opts$omega.intercept,
-          lambda.intercept = opts$lambda.intercept,
-          update.omega = opts$update.omega,
-          update.lambda = opts$update.lambda,
-          min.decrease = opts$min.decrease,
-          max.iter = opts$max.iter
-        )))
-      }
-    },
-    .options = furrr::furrr_options(seed = TRUE)
-  )
+          return(as.vector(synthdid_estimate(
+            Y = setup$Y[sorted_ind, ],
+            N0 = sum(sorted_ind <= setup$N0),
+            T0 = setup$T0,
+            X = setup$X[sorted_ind, , ],
+            weights = weights.boot,
+            zeta.omega = opts$zeta.omega,
+            zeta.lambda = opts$zeta.lambda,
+            omega.intercept = opts$omega.intercept,
+            lambda.intercept = opts$lambda.intercept,
+            update.omega = opts$update.omega,
+            update.lambda = opts$update.lambda,
+            min.decrease = opts$min.decrease,
+            max.iter = opts$max.iter
+          )))
+        }
+      },
+      .options = furrr::furrr_options(seed = TRUE)
+    )
+  })
 
   sqrt((replications - 1) / replications) * sd(bootstrap_estimates)
 }
@@ -125,32 +128,36 @@ jackknife_se <- function(estimate, weights = attr(estimate, "weights")) {
   if (setup$N0 == nrow(setup$Y) - 1 || (!is.null(weights) && sum(weights$omega != 0) == 1)) {
     return(NA)
   }
-  jackknife_estimates <- furrr::future_map_dbl(
-    seq_len(nrow(setup$Y)),
-    \(i) {
-      ind <- seq_len(nrow(setup$Y))[-i]
-      weights.jk <- weights
-      if (!is.null(weights)) {
-        weights.jk$omega <- sum_normalize(weights$omega[ind[ind <= setup$N0]])
-      }
-      as.vector(synthdid_estimate(
-        Y = setup$Y[ind, ],
-        N0 = sum(ind <= setup$N0),
-        T0 = setup$T0,
-        X = setup$X[ind, , ],
-        weights = weights.jk,
-        zeta.omega = opts$zeta.omega,
-        zeta.lambda = opts$zeta.lambda,
-        omega.intercept = opts$omega.intercept,
-        lambda.intercept = opts$lambda.intercept,
-        update.omega = opts$update.omega,
-        update.lambda = opts$update.lambda,
-        min.decrease = opts$min.decrease,
-        max.iter = opts$max.iter
-      ))
-    },
-    .options = furrr::furrr_options(seed = TRUE)
-  )
+
+  # Use BLAS thread management to prevent oversubscription with parallel workers
+  jackknife_estimates <- with_blas_thread_management({
+    furrr::future_map_dbl(
+      seq_len(nrow(setup$Y)),
+      \(i) {
+        ind <- seq_len(nrow(setup$Y))[-i]
+        weights.jk <- weights
+        if (!is.null(weights)) {
+          weights.jk$omega <- sum_normalize(weights$omega[ind[ind <= setup$N0]])
+        }
+        as.vector(synthdid_estimate(
+          Y = setup$Y[ind, ],
+          N0 = sum(ind <= setup$N0),
+          T0 = setup$T0,
+          X = setup$X[ind, , ],
+          weights = weights.jk,
+          zeta.omega = opts$zeta.omega,
+          zeta.lambda = opts$zeta.lambda,
+          omega.intercept = opts$omega.intercept,
+          lambda.intercept = opts$lambda.intercept,
+          update.omega = opts$update.omega,
+          update.lambda = opts$update.lambda,
+          min.decrease = opts$min.decrease,
+          max.iter = opts$max.iter
+        ))
+      },
+      .options = furrr::furrr_options(seed = TRUE)
+    )
+  })
 
   n <- nrow(setup$Y)
   sqrt(((n - 1) / n) * (n - 1) * stats::var(jackknife_estimates))
@@ -177,31 +184,34 @@ placebo_se <- function(estimate, replications) {
     stop("must have more controls than treated units to use the placebo se")
   }
 
-  placebo_estimates <- furrr::future_map_dbl(
-    seq_len(replications),
-    \(x) {
-      ind <- sample.int(setup$N0)
-      N0 <- length(ind) - N1
-      weights.boot <- weights
-      weights.boot$omega <- sum_normalize(weights$omega[ind[1:N0]])
-      as.vector(synthdid_estimate(
-        Y = setup$Y[ind, ],
-        N0 = N0,
-        T0 = setup$T0,
-        X = setup$X[ind, , ],
-        weights = weights.boot,
-        zeta.omega = opts$zeta.omega,
-        zeta.lambda = opts$zeta.lambda,
-        omega.intercept = opts$omega.intercept,
-        lambda.intercept = opts$lambda.intercept,
-        update.omega = opts$update.omega,
-        update.lambda = opts$update.lambda,
-        min.decrease = opts$min.decrease,
-        max.iter = opts$max.iter
-      ))
-    },
-    .options = furrr::furrr_options(seed = TRUE)
-  )
+  # Use BLAS thread management to prevent oversubscription with parallel workers
+  placebo_estimates <- with_blas_thread_management({
+    furrr::future_map_dbl(
+      seq_len(replications),
+      \(x) {
+        ind <- sample.int(setup$N0)
+        N0 <- length(ind) - N1
+        weights.boot <- weights
+        weights.boot$omega <- sum_normalize(weights$omega[ind[1:N0]])
+        as.vector(synthdid_estimate(
+          Y = setup$Y[ind, ],
+          N0 = N0,
+          T0 = setup$T0,
+          X = setup$X[ind, , ],
+          weights = weights.boot,
+          zeta.omega = opts$zeta.omega,
+          zeta.lambda = opts$zeta.lambda,
+          omega.intercept = opts$omega.intercept,
+          lambda.intercept = opts$lambda.intercept,
+          update.omega = opts$update.omega,
+          update.lambda = opts$update.lambda,
+          min.decrease = opts$min.decrease,
+          max.iter = opts$max.iter
+        ))
+      },
+      .options = furrr::furrr_options(seed = TRUE)
+    )
+  })
 
   sqrt((replications - 1) / replications) * sd(placebo_estimates)
 }

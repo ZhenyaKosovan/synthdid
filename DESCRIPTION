@@ -11,18 +11,18 @@ Description: Estimate average treatment effects in panel data.
     Currently provides methods only for the case that all treated units
     adopt treatment at the same time.
 Depends:
-    R (>= 3.4)
+    R (>= 4.1.0)
 Imports:
     mvtnorm,
     Rcpp,
-    RcppArmadillo,
     stats,
     utils,
     graphics,
     methods,
     ggplot2,
     grid,
-    furrr
+    furrr,
+    future
 LinkingTo:
     Rcpp,
     RcppArmadillo
@@ -44,7 +44,8 @@ Suggests:
     tibble,
     purrr,
     xtable,
-    gifski
+    gifski,
+    RhpcBLASctl
 URL: https://github.com/synth-inference/synthdid
 BugReports: https://github.com/synth-inference/synthdid/issues
 Config/testthat/edition: 3
