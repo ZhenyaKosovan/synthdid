@@ -39,13 +39,13 @@ devtools::install_github("ZhenyaKosovan/synthdid")
 ### New Formula Interface (Recommended)
 
 ``` r
-set.seed(12345)
 library(synthdid)
 
 # Estimate the effect of California Proposition 99 on cigarette consumption
 data("california_prop99")
 
 # Modern formula interface
+set.seed(12345)
 result <- synthdid(PacksPerCapita ~ treated,
                    data = california_prop99,
                    index = c("State", "Year"),
@@ -107,12 +107,13 @@ sc_est <- synthdid(outcome ~ treatment, data, index, method = "sc")
 
 ### Covariate Adjustment
 
-Include time-varying covariates:
+Include time-varying covariates (if available in your dataset):
 
 ``` r
-result <- synthdid(PacksPerCapita ~ treated | log_income + unemployment,
-                   data = california_prop99,
-                   index = c("State", "Year"))
+# Example syntax - requires covariates in your data
+result <- synthdid(outcome ~ treatment | covariate1 + covariate2,
+                   data = your_data,
+                   index = c("unit", "time"))
 ```
 
 ### Standard Error Methods
@@ -176,7 +177,7 @@ This package uses **RcppArmadillo** with AVX vectorization for significant perfo
 ## Package Interface Comparison
 
 | Task | Old Interface | New Interface |
-|------------------|---------------------------|---------------------------|
+|------------------------|------------------------|------------------------|
 | Basic estimation | `setup <- panel.matrices(data)`<br>`synthdid_estimate(setup$Y, setup$N0, setup$T0)` | `synthdid(outcome ~ treatment, data, index)` |
 | Get coefficient | `c(result)` | `coef(result)` |
 | Summary | Custom function | `summary(result)` |

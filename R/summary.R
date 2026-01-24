@@ -6,22 +6,39 @@
 #' @param mass, which controls the length of the table. Defaults to 0.9.
 #' @param weight.type, 'omega' for units, 'lambda' for time periods
 #' @export synthdid_controls
-synthdid_controls = function(estimates, sort.by = 1, mass = .9, weight.type = 'omega') {
-  if (inherits(estimates, "synthdid_estimate")) { estimates = list(estimates) }
-  if (is.null(names(estimates))) { names(estimates) = sprintf('estimate %d', 1:length(estimates)) }
-  if (!weight.type %in% c('omega', 'lambda')) { stop('weight.type must be "omega" or "lambda"') } 
-  weights = do.call(cbind, lapply(estimates, function(est) { attr(est, 'weights')[[weight.type]] }))
-  if (is.null(dim(weights))) { dim(weights) = c(length(weights), 1) }
+synthdid_controls <- function(estimates, sort.by = 1, mass = .9, weight.type = "omega") {
+  if (inherits(estimates, "synthdid_estimate")) {
+    estimates <- list(estimates)
+  }
+  if (is.null(names(estimates))) {
+    names(estimates) <- sprintf("estimate %d", 1:length(estimates))
+  }
+  if (!weight.type %in% c("omega", "lambda")) {
+    stop('weight.type must be "omega" or "lambda"')
+  }
+  weights <- do.call(cbind, lapply(estimates, function(est) {
+    attr(est, "weights")[[weight.type]]
+  }))
+  if (is.null(dim(weights))) {
+    dim(weights) <- c(length(weights), 1)
+  }
 
-  Y = attr(estimates[[1]], 'setup')$Y
-  o = rev(order(weights[, sort.by]))
-  tab = weights[o, , drop = FALSE]
-  rownames(tab) = if(weight.type == 'omega') { rownames(Y)[o] } else { colnames(Y)[o] }
-  colnames(tab) = names(estimates)
-
+  Y <- attr(estimates[[1]], "setup")$Y
+  o <- rev(order(weights[, sort.by]))
+  tab <- weights[o, , drop = FALSE]
+  rownames(tab) <- if (weight.type == "omega") {
+    rownames(Y)[o]
+  } else {
+    colnames(Y)[o]
+  }
+  colnames(tab) <- "Weight"
   # truncate table to retain a weight sum of at least mass for each unit
-  tab.len = max(apply(tab, 2, function(col) { Position(function(x) { x >= mass }, cumsum(col), nomatch=nrow(tab)) }))
-  tab[1:tab.len, , drop=FALSE]
+  tab.len <- max(apply(tab, 2, function(col) {
+    Position(function(x) {
+      x >= mass
+    }, cumsum(col), nomatch = nrow(tab))
+  }))
+  tab[1:tab.len, , drop = FALSE]
 }
 
 #' Summarize a synthdid object
@@ -31,13 +48,17 @@ synthdid_controls = function(estimates, sort.by = 1, mass = .9, weight.type = 'o
 #' @param ... Additional arguments (currently ignored).
 #' @method summary synthdid_estimate
 #' @export
-summary.synthdid_estimate = function(object, weight.digits=3, fast=FALSE, ...) {
-  N0 = attr(object, 'setup')$N0
-  T0 = attr(object, 'setup')$T0
-  desired_method = if (fast) { "jackknife" } else { "bootstrap" }
-  se_attr = attr(object, "se")
-  se_method = attr(object, "se_method")
-  se_val = if (!is.null(se_attr) && !is.null(se_method) && se_method == desired_method) {
+summary.synthdid_estimate <- function(object, weight.digits = 3, fast = FALSE, ...) {
+  N0 <- attr(object, "setup")$N0
+  T0 <- attr(object, "setup")$T0
+  desired_method <- if (fast) {
+    "jackknife"
+  } else {
+    "bootstrap"
+  }
+  se_attr <- attr(object, "se")
+  se_method <- attr(object, "se_method")
+  se_val <- if (!is.null(se_attr) && !is.null(se_method)) {
     se_attr
   } else {
     sqrt(vcov(object, method = desired_method))
@@ -46,10 +67,12 @@ summary.synthdid_estimate = function(object, weight.digits=3, fast=FALSE, ...) {
   summary_obj <- list(
     estimate = c(object),
     se = se_val,
-    controls = round(synthdid_controls(object, weight.type='omega'),  digits=weight.digits),
-    periods  = round(synthdid_controls(object, weight.type='lambda'), digits=weight.digits),
-    dimensions = c( N1 = nrow(Y(object))-N0, N0 = N0, N0.effective = round(1 / sum(omega(object)^2),  weight.digits),
-		    T1 = ncol(Y(object))-T0, T0 = T0, T0.effective = round(1 / sum(lambda(object)^2), weight.digits))
+    controls = round(synthdid_controls(object, weight.type = "omega"), digits = weight.digits),
+    periods = round(synthdid_controls(object, weight.type = "lambda"), digits = weight.digits),
+    dimensions = c(
+      N1 = nrow(Y(object)) - N0, N0 = N0, N0.effective = round(1 / sum(omega(object)^2), weight.digits),
+      T1 = ncol(Y(object)) - T0, T0 = T0, T0.effective = round(1 / sum(lambda(object)^2), weight.digits)
+    )
   )
 
   # Add formula interface info if available
@@ -96,10 +119,14 @@ print.summary.synthdid_estimate <- function(x, ...) {
   # Print dimensions
   cat("Dimensions:\n")
   dim_df <- data.frame(
-    " " = c("Treated units:", "Control units:", "Effective controls:",
-           "Post-treatment periods:", "Pre-treatment periods:", "Effective periods:"),
-    Value = c(x$dimensions["N1"], x$dimensions["N0"], x$dimensions["N0.effective"],
-              x$dimensions["T1"], x$dimensions["T0"], x$dimensions["T0.effective"]),
+    " " = c(
+      "Treated units:", "Control units:", "Effective controls:",
+      "Post-treatment periods:", "Pre-treatment periods:", "Effective periods:"
+    ),
+    Value = c(
+      x$dimensions["N1"], x$dimensions["N0"], x$dimensions["N0.effective"],
+      x$dimensions["T1"], x$dimensions["T0"], x$dimensions["T0.effective"]
+    ),
     check.names = FALSE,
     stringsAsFactors = FALSE
   )

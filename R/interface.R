@@ -43,15 +43,17 @@
 #'
 #' # Basic usage
 #' result <- synthdid(PacksPerCapita ~ treated,
-#'                    data = california_prop99,
-#'                    index = c("State", "Year"))
+#'   data = california_prop99,
+#'   index = c("State", "Year")
+#' )
 #'
 #' # With standard errors
 #' result <- synthdid(PacksPerCapita ~ treated,
-#'                    data = california_prop99,
-#'                    index = c("State", "Year"),
-#'                    se = TRUE,
-#'                    se_method = "bootstrap")
+#'   data = california_prop99,
+#'   index = c("State", "Year"),
+#'   se = TRUE,
+#'   se_method = "bootstrap"
+#' )
 #'
 #' # Standard R methods work
 #' print(result)
@@ -62,9 +64,10 @@
 #'
 #' # Compare methods
 #' did_result <- synthdid(PacksPerCapita ~ treated,
-#'                        data = california_prop99,
-#'                        index = c("State", "Year"),
-#'                        method = "did")
+#'   data = california_prop99,
+#'   index = c("State", "Year"),
+#'   method = "did"
+#' )
 #' }
 #'
 #' @seealso \code{\link{synthdid_estimate}}, \code{\link{panel.matrices}}
@@ -77,7 +80,6 @@ synthdid <- function(formula,
                      se_method = c("bootstrap", "jackknife", "placebo"),
                      se_replications = 200,
                      ...) {
-
   # Capture the call
   cl <- match.call()
 
@@ -124,10 +126,11 @@ synthdid <- function(formula,
   # Create panel structure
   panel_data <- data[, c(unit_var, time_var, outcome_var, treatment_var), drop = FALSE]
   setup <- panel.matrices(panel_data,
-                          unit = unit_var,
-                          time = time_var,
-                          outcome = outcome_var,
-                          treatment = treatment_var)
+    unit = unit_var,
+    time = time_var,
+    outcome = outcome_var,
+    treatment = treatment_var
+  )
 
   # Handle covariates if present
   X <- array(dim = c(dim(setup$Y), 0))
@@ -136,10 +139,11 @@ synthdid <- function(formula,
     X_list <- lapply(covariate_vars, function(cov) {
       cov_panel <- data[, c(unit_var, time_var, cov, treatment_var), drop = FALSE]
       cov_setup <- panel.matrices(cov_panel,
-                                   unit = unit_var,
-                                   time = time_var,
-                                   outcome = cov,
-                                   treatment = treatment_var)
+        unit = unit_var,
+        time = time_var,
+        outcome = cov,
+        treatment = treatment_var
+      )
       cov_setup$Y
     })
     X <- array(unlist(X_list), dim = c(dim(setup$Y), length(covariate_vars)))
@@ -147,21 +151,27 @@ synthdid <- function(formula,
 
   # Call appropriate estimator
   estimate <- switch(method,
-    "synthdid" = synthdid_estimate(setup$Y, setup$N0, setup$T0, X = X,
-                                    estimate_se = se,
-                                    se_method = se_method,
-                                    se_replications = se_replications,
-                                    ...),
-    "sc" = sc_estimate(setup$Y, setup$N0, setup$T0, X = X,
-                      estimate_se = se,
-                      se_method = se_method,
-                      se_replications = se_replications,
-                      ...),
-    "did" = did_estimate(setup$Y, setup$N0, setup$T0, X = X,
-                        estimate_se = se,
-                        se_method = se_method,
-                        se_replications = se_replications,
-                        ...)
+    "synthdid" = synthdid_estimate(setup$Y, setup$N0, setup$T0,
+      X = X,
+      estimate_se = se,
+      se_method = se_method,
+      se_replications = se_replications,
+      ...
+    ),
+    "sc" = sc_estimate(setup$Y, setup$N0, setup$T0,
+      X = X,
+      estimate_se = se,
+      se_method = se_method,
+      se_replications = se_replications,
+      ...
+    ),
+    "did" = did_estimate(setup$Y, setup$N0, setup$T0,
+      X = X,
+      estimate_se = se,
+      se_method = se_method,
+      se_replications = se_replications,
+      ...
+    )
   )
 
   # Enrich the object with formula interface attributes
@@ -235,8 +245,10 @@ extract_vars_from_expr <- function(expr) {
   } else if (is.call(expr)) {
     if (as.character(expr[[1]]) == "+") {
       # Handle addition: recurse on both sides
-      return(c(extract_vars_from_expr(expr[[2]]),
-               extract_vars_from_expr(expr[[3]])))
+      return(c(
+        extract_vars_from_expr(expr[[2]]),
+        extract_vars_from_expr(expr[[3]])
+      ))
     } else {
       # For other functions like I(), log(), etc., extract the variable
       # This is a simplified version - could be enhanced
@@ -265,7 +277,9 @@ print.synthdid <- function(x, ...) {
   se_attr <- attr(x, "se")
   if (!is.null(se_attr) && !is.na(se_attr)) {
     cat("Standard Error:   ", format(se_attr, digits = 4),
-        " (", attr(x, "se_method"), ")\n", sep = "")
+      " (", attr(x, "se_method"), ")\n",
+      sep = ""
+    )
   }
 
   # Show dimensions
@@ -290,14 +304,15 @@ coef.synthdid <- function(object, ...) {
 
 
 #' @export
-confint.synthdid <- function(object, parm = NULL, level = 0.95, ...) {
+confint.synthdid <- function(object, level = 0.95, ...) {
   tau <- coef(object)
-  se <- sqrt(vcov(object, ...))
-
+  se <- attr(object, "se")
   if (is.na(se)) {
     warning("Standard error not available; cannot compute confidence interval")
-    return(matrix(c(NA, NA), nrow = 1, ncol = 2,
-                  dimnames = list("treated", c("Lower", "Upper"))))
+    return(matrix(c(NA, NA),
+      nrow = 1, ncol = 2,
+      dimnames = list("treated", c("Lower", "Upper"))
+    ))
   }
 
   z <- qnorm((1 + level) / 2)
@@ -335,7 +350,7 @@ fitted.synthdid <- function(object, ...) {
 
   # For treated units, use synthetic control
   synthetic_control <- t(weights$omega) %*% (Y[1:N0, ] - X.beta[1:N0, ])
-  for (i in (N0+1):nrow(Y)) {
+  for (i in (N0 + 1):nrow(Y)) {
     fitted_matrix[i, ] <- synthetic_control + X.beta[i, ]
   }
 
@@ -358,18 +373,20 @@ residuals.synthdid <- function(object, type = c("control", "pretreatment", "all"
     # Residuals for control units
     Y_control <- (Y - X.beta)[1:N0, , drop = FALSE]
     synthetic <- matrix(t(weights$omega) %*% Y_control,
-                       nrow = N0,
-                       ncol = ncol(Y),
-                       byrow = TRUE)
+      nrow = N0,
+      ncol = ncol(Y),
+      byrow = TRUE
+    )
     omega_resid <- Y_control - synthetic
     return(omega_resid)
   } else if (type == "pretreatment") {
     # Residuals for pre-treatment periods
     Y_pre <- (Y - X.beta)[, 1:T0, drop = FALSE]
     synthetic <- matrix(Y_pre %*% weights$lambda,
-                       nrow = nrow(Y),
-                       ncol = T0,
-                       byrow = FALSE)
+      nrow = nrow(Y),
+      ncol = T0,
+      byrow = FALSE
+    )
     lambda_resid <- Y_pre - synthetic
     return(lambda_resid)
   } else {
@@ -399,18 +416,17 @@ predict.synthdid <- function(object,
     # What would have happened to treated units without treatment?
     synthetic_control <- t(weights$omega) %*% (Y[1:N0, ] - X.beta[1:N0, ])
     counterfactual <- matrix(synthetic_control,
-                             nrow = N1,
-                             ncol = ncol(Y),
-                             byrow = TRUE) + X.beta[(N0+1):nrow(Y), ]
-    rownames(counterfactual) <- rownames(Y)[(N0+1):nrow(Y)]
+      nrow = N1,
+      ncol = ncol(Y),
+      byrow = TRUE
+    ) + X.beta[(N0 + 1):nrow(Y), ]
+    rownames(counterfactual) <- rownames(Y)[(N0 + 1):nrow(Y)]
     colnames(counterfactual) <- colnames(Y)
     return(counterfactual)
-
   } else if (type == "treated") {
     # Actual treated outcomes
-    treated_outcomes <- Y[(N0+1):nrow(Y), , drop = FALSE]
+    treated_outcomes <- Y[(N0 + 1):nrow(Y), , drop = FALSE]
     return(treated_outcomes)
-
   } else {
     # Treatment effect by period (effect curve)
     return(synthdid_effect_curve(object))

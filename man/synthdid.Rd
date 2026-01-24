@@ -65,15 +65,17 @@ data(california_prop99)
 
 # Basic usage
 result <- synthdid(PacksPerCapita ~ treated,
-                   data = california_prop99,
-                   index = c("State", "Year"))
+  data = california_prop99,
+  index = c("State", "Year")
+)
 
 # With standard errors
 result <- synthdid(PacksPerCapita ~ treated,
-                   data = california_prop99,
-                   index = c("State", "Year"),
-                   se = TRUE,
-                   se_method = "bootstrap")
+  data = california_prop99,
+  index = c("State", "Year"),
+  se = TRUE,
+  se_method = "bootstrap"
+)
 
 # Standard R methods work
 print(result)
@@ -84,9 +86,10 @@ plot(result)
 
 # Compare methods
 did_result <- synthdid(PacksPerCapita ~ treated,
-                       data = california_prop99,
-                       index = c("State", "Year"),
-                       method = "did")
+  data = california_prop99,
+  index = c("State", "Year"),
+  method = "did"
+)
 }
 
 }
