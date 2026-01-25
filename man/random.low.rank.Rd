@@ -16,4 +16,16 @@ Creates a reproducible, low-rank outcome matrix with a block treatment
 indicator. Useful for unit tests or demonstrations that need structured data
 with controlled noise and treatment effects.
 }
-\keyword{internal}
+\examples{
+\donttest{
+# Generate synthetic data for testing
+data <- random.low.rank()
+
+# Run estimation
+tau.hat <- synthdid_estimate(data$Y, data$N0, data$T0)
+print(tau.hat)
+
+# True treatment effect is 1
+tau.hat  # Should be close to 1
+}
+}

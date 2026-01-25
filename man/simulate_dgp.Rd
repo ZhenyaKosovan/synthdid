@@ -22,3 +22,18 @@ The first N0 rows of Y are for units assigned to control, the remaining rows are
 Simulates data from DGPs used in the placebo studies in Sections 3 and 5
 of the synthetic difference in differences paper. Described there in Section 3.1.1.
 }
+\examples{
+\donttest{
+# Estimate DGP from real data
+data(california_prop99)
+setup <- panel.matrices(california_prop99)
+dgp_params <- estimate_dgp(setup$Y, setup$Y[, ncol(setup$Y)] > 0, rank = 2)
+
+# Simulate new data from estimated DGP
+sim_data <- simulate_dgp(dgp_params, N1 = 5, T1 = 10)
+
+# Estimate treatment effect on simulated data
+tau.sim <- synthdid_estimate(sim_data$Y, sim_data$N0, sim_data$T0)
+print(tau.sim)
+}
+}

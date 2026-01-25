@@ -9,8 +9,9 @@ sc.weight.fw(
   zeta,
   intercept = TRUE,
   lambda = NULL,
-  min.decrease = 0.001,
-  max.iter = 1000
+  min.decrease = SYNTHDID_MIN_DECREASE_DEFAULT,
+  max.iter = SYNTHDID_MAX_ITER_DEFAULT,
+  warn_not_converged = TRUE
 )
 }
 \arguments{
@@ -29,8 +30,8 @@ iterating.}
 \item{max.iter}{Maximum number of Frank-Wolfe iterations.}
 }
 \value{
-A list with fields \code{lambda} (weights) and \code{vals} (objective
-trace).
+A list with fields \code{lambda} (weights), \code{vals} (objective
+trace), \code{converged} (boolean), and \code{iterations} (count).
 }
 \description{
 Estimates \code{lambda} weights using exact line search under simplex

@@ -11,7 +11,7 @@ synthdid(
   method = c("synthdid", "sc", "did"),
   se = FALSE,
   se_method = c("bootstrap", "jackknife", "placebo"),
-  se_replications = 200,
+  se_replications = SYNTHDID_SE_REPLICATIONS_DEFAULT,
   ...
 )
 }

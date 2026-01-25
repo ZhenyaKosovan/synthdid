@@ -22,3 +22,15 @@ and an element ar_coef with the AR(2) model coefficients underlying the covarian
 Estimates the DGP parameters used in the placebo studies in Sections 3 and 5
 of the synthetic difference in differences paper. Described there in Section 3.1.1.
 }
+\examples{
+\donttest{
+# Estimate DGP parameters from California Prop 99 data
+data(california_prop99)
+setup <- panel.matrices(california_prop99)
+dgp_params <- estimate_dgp(setup$Y, setup$Y[, ncol(setup$Y)] > 0, rank = 2)
+
+# Use parameters to simulate similar data
+simulated <- simulate_dgp(dgp_params, N1 = 1, T1 = 11)
+tau.sim <- synthdid_estimate(simulated$Y, simulated$N0, simulated$T0)
+}
+}

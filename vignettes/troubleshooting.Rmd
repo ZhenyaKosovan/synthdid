@@ -1,0 +1,407 @@
+---
+title: "Troubleshooting Guide for synthdid"
+author: "synthdid package authors"
+date: "`r Sys.Date()`"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Troubleshooting Guide for synthdid}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>",
+  fig.width = 7,
+  fig.height = 5
+)
+```
+
+# Introduction
+
+This vignette provides practical guidance for diagnosing and resolving common issues when using the `synthdid` package. It covers convergence problems, numerical instability, memory management, and guidance on choosing the appropriate estimator for your application.
+
+# Convergence Issues
+
+## Checking Convergence
+
+The synthdid package now includes built-in convergence diagnostics that are automatically computed during estimation (with zero overhead):
+
+```{r convergence-check, eval=FALSE}
+library(synthdid)
+data(california_prop99)
+setup <- panel.matrices(california_prop99)
+tau.hat <- synthdid_estimate(setup$Y, setup$N0, setup$T0)
+
+# Quick convergence check
+synthdid_converged(tau.hat)
+
+# Detailed diagnostics
+conv_info <- synthdid_convergence_info(tau.hat)
+print(conv_info)
+
+# Or use summary() which includes convergence status
+summary(tau.hat)
+```
+
+## What Causes Convergence Failures?
+
+Common causes of convergence failures include:
+
+1. **Insufficient iterations**: The default `max.iter = 1e4` may be too small for difficult problems
+2. **Tight tolerances**: The stopping criterion `min.decrease` may be too strict
+3. **Ill-conditioned problems**: Extreme values or near-collinearity in the data
+4. **Sparse data**: Very few control units or pre-treatment periods
+
+## Solutions for Convergence Problems
+
+### 1. Increase Maximum Iterations
+
+```{r increase-iter, eval=FALSE}
+# Increase max.iter
+tau.hat <- synthdid_estimate(setup$Y, setup$N0, setup$T0, max.iter = 5e4)
+synthdid_converged(tau.hat)
+```
+
+### 2. Relax Stopping Criterion
+
+```{r relax-criterion, eval=FALSE}
+# Use a looser stopping criterion
+tau.hat <- synthdid_estimate(setup$Y, setup$N0, setup$T0, min.decrease = 1e-3)
+```
+
+### 3. Adjust Regularization
+
+```{r adjust-regularization, eval=FALSE}
+# Increase regularization to stabilize optimization
+tau.hat <- synthdid_estimate(setup$Y, setup$N0, setup$T0,
+                              eta.omega = 2, eta.lambda = 1e-5)
+```
+
+### 4. Check Problem Setup
+
+```{r check-setup, eval=FALSE}
+# Verify your data
+dim(setup$Y)
+range(setup$Y)
+any(is.na(setup$Y))
+any(!is.finite(setup$Y))
+
+# Check for extreme values
+summary(as.vector(setup$Y))
+```
+
+## When Convergence Warnings Are Acceptable
+
+Not all convergence warnings indicate problems:
+
+- If the final decrease is very small (< 1e-8), the optimization is essentially converged
+- If the estimate is stable across different starting points, non-convergence may be harmless
+- For exploratory analysis, approximate convergence may be sufficient
+
+Always check the robustness of your results when convergence warnings appear.
+
+# Numerical Stability Issues
+
+## Common Numerical Problems
+
+### Zero or Near-Zero Noise Level
+
+When pre-treatment data has very little variation, `noise.level` can be extremely small or zero, causing numerical issues:
+
+```{r noise-level, eval=FALSE}
+# Check noise level
+Y <- setup$Y
+N0 <- setup$N0
+T0 <- setup$T0
+diffs <- Y[1:N0, 2:T0] - Y[1:N0, 1:(T0-1)]
+noise.level <- sd(c(diffs))
+print(noise.level)
+
+# If noise.level is very small, specify it manually
+if (noise.level < 1e-8) {
+  tau.hat <- synthdid_estimate(setup$Y, setup$N0, setup$T0,
+                                noise.level = 1e-6)
+}
+```
+
+### Extreme Values in Data
+
+Large magnitude differences in your data can cause overflow or precision loss:
+
+```{r scale-data, eval=FALSE}
+# Check data scale
+summary(as.vector(setup$Y))
+
+# Consider rescaling if values are very large or very small
+Y_scaled <- setup$Y / 1000  # Scale down by factor of 1000
+tau.hat <- synthdid_estimate(Y_scaled, setup$N0, setup$T0)
+# Remember to scale back the estimate
+tau.hat * 1000
+```
+
+### Near-Singular Matrices
+
+When control units are nearly identical or time periods are highly correlated:
+
+```{r check-collinearity, eval=FALSE}
+# Check for near-collinearity in controls
+cor_matrix <- cor(t(setup$Y[1:setup$N0, 1:setup$T0]))
+max_cor <- max(abs(cor_matrix[upper.tri(cor_matrix)]))
+print(max_cor)
+
+# If max_cor > 0.99, consider removing redundant units
+if (max_cor > 0.99) {
+  warning("High collinearity detected among control units")
+}
+```
+
+## Solutions for Numerical Instability
+
+1. **Use scaled optimization**: Normalize your outcome variable to have reasonable magnitude
+2. **Increase regularization**: Higher `eta.omega` and `eta.lambda` stabilize optimization
+3. **Check data quality**: Remove units with missing or extreme values
+4. **Use double precision**: R uses double precision by default, but verify your data import didn't downcast
+
+# Memory Management
+
+## Estimating Memory Requirements
+
+Use the built-in memory estimation tool before running large-scale analyses:
+
+```{r memory-estimate, eval=FALSE}
+# Estimate memory for your problem size
+mem <- synthdid_memory_estimate(
+  N = nrow(setup$Y),
+  T = ncol(setup$Y),
+  K = 0,  # Number of covariates
+  replications = 200,  # For bootstrap SE
+  include_se = TRUE
+)
+print(mem)
+```
+
+## Memory-Intensive Operations
+
+The most memory-intensive operations are:
+
+1. **Bootstrap standard errors**: Stores all replication estimates in memory
+2. **Covariate problems**: 3D arrays can be very large
+3. **Parallel processing**: Each worker needs a copy of the data
+
+## Solutions for Memory Issues
+
+### 1. Use Faster SE Methods
+
+```{r faster-se, eval=FALSE}
+# Jackknife is much more memory-efficient than bootstrap
+tau.hat <- synthdid_estimate(setup$Y, setup$N0, setup$T0,
+                              estimate_se = TRUE, se_method = "jackknife")
+```
+
+### 2. Reduce Bootstrap Replications
+
+```{r fewer-reps, eval=FALSE}
+# Use fewer replications for preliminary analysis
+tau.hat <- synthdid_estimate(setup$Y, setup$N0, setup$T0,
+                              estimate_se = TRUE,
+                              se_method = "bootstrap",
+                              se_replications = 100)  # Instead of 200
+```
+
+### 3. Process in Batches
+
+For extremely large problems, compute the estimate first, then SE separately:
+
+```{r batch-processing, eval=FALSE}
+# Compute estimate without SE
+tau.hat <- synthdid_estimate(setup$Y, setup$N0, setup$T0, estimate_se = FALSE)
+
+# Compute SE later when you have time/resources
+se <- sqrt(vcov(tau.hat, method = "jackknife"))
+```
+
+### 4. Monitor Memory Usage
+
+```{r monitor-memory, eval=FALSE}
+# Check current memory usage
+gc()
+
+# Use memory profiling for large problems
+Rprof(memory.profiling = TRUE)
+tau.hat <- synthdid_estimate(setup$Y, setup$N0, setup$T0)
+Rprof(NULL)
+summaryRprof(memory = "both")
+```
+
+# Choosing the Right Estimator
+
+## SC vs DID vs SynthDID
+
+Use this decision tree to choose the appropriate estimator:
+
+### Use **Difference-in-Differences (DID)** when:
+- You believe parallel trends holds for *all* control units
+- You have many control units (averaging improves efficiency)
+- Control units are relatively homogeneous
+- You want the simplest, most interpretable estimator
+
+```{r did-example, eval=FALSE}
+tau.did <- did_estimate(setup$Y, setup$N0, setup$T0)
+```
+
+### Use **Synthetic Control (SC)** when:
+- Parallel trends may only hold for a *weighted combination* of controls
+- You want to match pre-treatment trends exactly
+- You have few treated units (ideally just one)
+- Post-treatment extrapolation is a concern
+
+```{r sc-example, eval=FALSE}
+tau.sc <- sc_estimate(setup$Y, setup$N0, setup$T0)
+```
+
+### Use **Synthetic Difference-in-Differences (SynthDID)** when:
+- You want to combine the benefits of both methods
+- You have multiple treated units and multiple time periods
+- You want robustness to both parallel trends violations and time-varying confounders
+- You're willing to accept slightly more complexity for better performance
+
+```{r synthdid-example, eval=FALSE}
+tau.sdid <- synthdid_estimate(setup$Y, setup$N0, setup$T0)
+```
+
+## Comparing Estimators
+
+It's good practice to compare all three estimators:
+
+```{r compare-estimators, eval=FALSE}
+# Compute all three
+tau.did <- did_estimate(setup$Y, setup$N0, setup$T0)
+tau.sc <- sc_estimate(setup$Y, setup$N0, setup$T0)
+tau.sdid <- synthdid_estimate(setup$Y, setup$N0, setup$T0)
+
+# Compare estimates
+estimates <- list(DID = tau.did, SC = tau.sc, SynthDID = tau.sdid)
+sapply(estimates, function(x) c(x))
+
+# Visualize differences
+synthdid_plot(estimates, facet = c("DID", "SC", "SynthDID"))
+```
+
+**Interpretation tips:**
+- If all three estimates are similar, your results are robust
+- Large differences suggest the choice of estimator matters
+- DID > SC suggests time weights help; SC > DID suggests unit weights help
+- SynthDID is typically between the two extremes
+
+## When Estimates Diverge
+
+If estimators give very different results:
+
+1. **Check parallel trends**: Plot pre-treatment trends for each method
+2. **Inspect weights**: Look at which units/periods get high weight
+3. **Consider covariates**: Time-varying confounders may explain differences
+4. **Test sensitivity**: Try different regularization parameters
+5. **Look for structural breaks**: Check if treatment effects vary over time
+
+```{r diagnose-divergence, eval=FALSE}
+# Check unit weights
+synthdid_controls(estimates)
+
+# Check time weights
+synthdid_controls(estimates, weight.type = "lambda")
+
+# Plot unit-level effects
+synthdid_units_plot(estimates)
+```
+
+# Data Requirements and Limitations
+
+## Minimum Requirements
+
+For reliable estimates, you need:
+
+- **At least 2 control units** (more is better)
+- **At least 2 pre-treatment periods** (more is better)
+- **At least 1 treated unit and 1 post-treatment period**
+- **No missing values** in the outcome matrix
+- **Finite values** (no `Inf`, `-Inf`, or `NaN`)
+
+## Known Limitations
+
+1. **Staggered adoption**: Current implementation assumes simultaneous treatment
+2. **Time-varying treatment intensity**: Binary treatment only
+3. **Multiple treatments**: Cannot handle multiple distinct interventions
+4. **Unbalanced panels**: Requires complete rectangular matrix
+
+## Workarounds for Common Limitations
+
+### Handling Missing Data
+
+```{r handle-missing, eval=FALSE}
+# Option 1: Impute missing values (use with caution)
+Y_imputed <- setup$Y
+Y_imputed[is.na(Y_imputed)] <- mean(Y_imputed, na.rm = TRUE)
+
+# Option 2: Drop units/periods with missing data
+# (Only if missing data is minimal and random)
+```
+
+### Staggered Adoption
+
+For staggered adoption, estimate treatment effects separately for each cohort:
+
+```{r staggered, eval=FALSE}
+# Split data by treatment cohort
+# Estimate separately for each cohort
+# Combine using appropriate weights
+```
+
+# Getting Help
+
+If you're still experiencing issues:
+
+1. Check the [GitHub issues](https://github.com/synth-inference/synthdid/issues)
+2. Review the main package vignette: `vignette("synthdid")`
+3. See the convergence diagnostics vignette: `vignette("convergence-diagnostics")`
+4. Check the advanced topics vignette: `vignette("advanced-topics")`
+5. File a bug report with a reproducible example
+
+## Creating a Reproducible Example
+
+When reporting issues, include:
+
+```{r reproducible-example, eval=FALSE}
+library(synthdid)
+
+# Minimal data that reproduces the issue
+Y <- matrix(rnorm(200), 20, 10)
+N0 <- 15
+T0 <- 7
+
+# The command that fails or produces unexpected results
+tau.hat <- synthdid_estimate(Y, N0, T0)
+
+# Session info
+sessionInfo()
+```
+
+# Summary Checklist
+
+Before running synthdid on your data:
+
+- [ ] Check for missing or non-finite values
+- [ ] Verify you have sufficient control units and pre-treatment periods
+- [ ] Consider data scale and normalization
+- [ ] Estimate memory requirements for large problems
+- [ ] Choose appropriate estimator (DID/SC/SynthDID)
+- [ ] Check convergence diagnostics after estimation
+- [ ] Compare multiple estimators for robustness
+- [ ] Compute standard errors using appropriate method
+- [ ] Visualize results with plotting functions
+
+# References
+
+Arkhangelsky, D., Athey, S., Hirshberg, D. A., Imbens, G. W., & Wager, S. (2021).
+Synthetic difference-in-differences. *American Economic Review*, 111(12), 4088-4118.

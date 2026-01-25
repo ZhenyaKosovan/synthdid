@@ -7,7 +7,7 @@
 \method{vcov}{synthdid_estimate}(
   object,
   method = c("bootstrap", "jackknife", "placebo"),
-  replications = 200,
+  replications = SYNTHDID_SE_REPLICATIONS_DEFAULT,
   ...
 )
 }
@@ -22,6 +22,9 @@ for SC).}
 
 \item{...}{Additional arguments (currently ignored).}
 }
+\value{
+A 1x1 matrix containing the variance estimate.
+}
 \description{
 Provides variance estimates based on the following three options
 \itemize{
@@ -33,6 +36,32 @@ Provides variance estimates based on the following three options
 \details{
 The jackknife is not recommended for SC, see section 5 in Arkhangelsky et al.
 "placebo" is the only option that works for only one treated unit.
+}
+\examples{
+\donttest{
+# Compute variance using different methods
+data(california_prop99)
+setup <- panel.matrices(california_prop99)
+tau.hat <- synthdid_estimate(setup$Y, setup$N0, setup$T0)
+
+# Bootstrap standard error (default, may be slow)
+se.bootstrap <- sqrt(vcov(tau.hat, method = "bootstrap", replications = 100))
+
+# Jackknife standard error (faster)
+se.jackknife <- sqrt(vcov(tau.hat, method = "jackknife"))
+
+# Placebo standard error
+se.placebo <- sqrt(vcov(tau.hat, method = "placebo", replications = 100))
+
+# Display standard errors
+c(bootstrap = se.bootstrap, jackknife = se.jackknife, placebo = se.placebo)
+
+# Or compute SE at estimation time
+tau.hat.se <- synthdid_estimate(setup$Y, setup$N0, setup$T0,
+                                 estimate_se = TRUE, se_method = "jackknife")
+# Reuses cached SE without recomputation
+se.cached <- sqrt(vcov(tau.hat.se, method = "jackknife"))
+}
 }
 \references{
 Dmitry Arkhangelsky, Susan Athey, David A. Hirshberg, Guido W. Imbens, and Stefan Wager.

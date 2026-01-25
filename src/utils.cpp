@@ -143,10 +143,11 @@ NumericMatrix contract3_cpp(const NumericVector& X, const arma::vec& v) {
     stop("Length of v must match third dimension of X");
   }
 
-  // Convert R 3D array to Armadillo cube for vectorized operations
+  // Convert R 3D array to Armadillo cube using zero-copy advanced constructor
   // Memory layout: column-major, allowing efficient slicing
-  arma::cube X_cube(n_rows, n_cols, K);
-  std::copy(X.begin(), X.end(), X_cube.memptr());
+  // false = don't copy data, true = strict dimension checking
+  // This creates a memory-mapped view without copying the entire array
+  arma::cube X_cube(const_cast<double*>(X.begin()), n_rows, n_cols, K, false, true);
 
   // Initialize output matrix with zeros
   arma::mat out = arma::zeros<arma::mat>(n_rows, n_cols);

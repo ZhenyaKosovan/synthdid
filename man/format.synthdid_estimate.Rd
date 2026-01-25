@@ -11,6 +11,17 @@
 
 \item{...}{Additional arguments (currently ignored).}
 }
+\value{
+A character string with formatted summary information
+}
 \description{
 Format a synthdid object
+}
+\examples{
+\donttest{
+data(california_prop99)
+setup <- panel.matrices(california_prop99)
+tau.hat <- synthdid_estimate(setup$Y, setup$N0, setup$T0)
+format(tau.hat)
+}
 }

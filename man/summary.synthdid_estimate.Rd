@@ -4,7 +4,12 @@
 \alias{summary.synthdid_estimate}
 \title{Summarize a synthdid object}
 \usage{
-\method{summary}{synthdid_estimate}(object, weight.digits = 3, fast = FALSE, ...)
+\method{summary}{synthdid_estimate}(
+  object,
+  weight.digits = SYNTHDID_WEIGHT_DIGITS_DEFAULT,
+  fast = FALSE,
+  ...
+)
 }
 \arguments{
 \item{object}{The object to summarize}
@@ -15,6 +20,22 @@
 
 \item{...}{Additional arguments (currently ignored).}
 }
+\value{
+A summary object with estimate, standard error, weights, dimensions, and convergence info.
+}
 \description{
 Summarize a synthdid object
+}
+\examples{
+\donttest{
+data(california_prop99)
+setup <- panel.matrices(california_prop99)
+tau.hat <- synthdid_estimate(setup$Y, setup$N0, setup$T0)
+
+# Detailed summary with standard error
+summary(tau.hat)
+
+# Fast summary (uses jackknife instead of bootstrap)
+summary(tau.hat, fast = TRUE)
+}
 }

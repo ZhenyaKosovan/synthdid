@@ -12,6 +12,22 @@ synthdid_placebo(estimate, treated.fraction = NULL)
 \item{treated.fraction, }{the fraction of pre-treatment data to use as a placebo treatment period
 Defaults to NULL, which indicates that it should be the fraction of post-treatment to pre-treatment data}
 }
+\value{
+A placebo estimate using only pre-treatment data
+}
 \description{
 Computes a placebo variant of our estimator using pre-treatment data only
+}
+\examples{
+\donttest{
+data(california_prop99)
+setup <- panel.matrices(california_prop99)
+tau.hat <- synthdid_estimate(setup$Y, setup$N0, setup$T0)
+
+# Compute placebo estimate
+tau.placebo <- synthdid_placebo(tau.hat)
+
+# Should be close to zero if parallel trends holds
+c(estimate = tau.hat, placebo = tau.placebo)
+}
 }

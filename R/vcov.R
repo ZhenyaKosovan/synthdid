@@ -17,6 +17,32 @@
 #' @param replications, the number of bootstrap replications
 #' @param ... Additional arguments (currently ignored).
 #'
+#' @return A 1x1 matrix containing the variance estimate.
+#' @examples
+#' \donttest{
+#' # Compute variance using different methods
+#' data(california_prop99)
+#' setup <- panel.matrices(california_prop99)
+#' tau.hat <- synthdid_estimate(setup$Y, setup$N0, setup$T0)
+#'
+#' # Bootstrap standard error (default, may be slow)
+#' se.bootstrap <- sqrt(vcov(tau.hat, method = "bootstrap", replications = 100))
+#'
+#' # Jackknife standard error (faster)
+#' se.jackknife <- sqrt(vcov(tau.hat, method = "jackknife"))
+#'
+#' # Placebo standard error
+#' se.placebo <- sqrt(vcov(tau.hat, method = "placebo", replications = 100))
+#'
+#' # Display standard errors
+#' c(bootstrap = se.bootstrap, jackknife = se.jackknife, placebo = se.placebo)
+#'
+#' # Or compute SE at estimation time
+#' tau.hat.se <- synthdid_estimate(setup$Y, setup$N0, setup$T0,
+#'                                  estimate_se = TRUE, se_method = "jackknife")
+#' # Reuses cached SE without recomputation
+#' se.cached <- sqrt(vcov(tau.hat.se, method = "jackknife"))
+#' }
 #' @references Dmitry Arkhangelsky, Susan Athey, David A. Hirshberg, Guido W. Imbens, and Stefan Wager.
 #'  "Synthetic Difference in Differences". arXiv preprint arXiv:1812.09970, 2019.
 #'
@@ -25,7 +51,7 @@
 vcov.synthdid_estimate <- function(
     object,
     method = c("bootstrap", "jackknife", "placebo"),
-    replications = 200, ...) {
+    replications = SYNTHDID_SE_REPLICATIONS_DEFAULT, ...) {
   method <- match.arg(method)
   precomputed_se <- attr(object, "se")
   precomputed_method <- attr(object, "se_method")
@@ -44,6 +70,23 @@ vcov.synthdid_estimate <- function(
 
 #' Calculate the standard error of a synthetic diff in diff estimate. Deprecated. Use vcov.synthdid_estimate.
 #' @param ... Any valid arguments for vcov.synthdid_estimate
+#' @return A scalar standard error estimate.
+#' @examples
+#' \donttest{
+#' # This function is deprecated. Use sqrt(vcov(...)) instead.
+#' data(california_prop99)
+#' setup <- panel.matrices(california_prop99)
+#' tau.hat <- synthdid_estimate(setup$Y, setup$N0, setup$T0)
+#'
+#' # Deprecated approach (still works)
+#' se.old <- synthdid_se(tau.hat, method = "jackknife")
+#'
+#' # Preferred approach
+#' se.new <- sqrt(vcov(tau.hat, method = "jackknife"))
+#'
+#' # Both give the same result
+#' all.equal(se.old, se.new)
+#' }
 #' @export synthdid_se
 synthdid_se <- function(...) {
   sqrt(vcov(...))

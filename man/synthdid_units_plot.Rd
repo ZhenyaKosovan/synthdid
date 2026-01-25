@@ -9,8 +9,8 @@ Requires ggplot2}
 \usage{
 synthdid_units_plot(
   estimates,
-  negligible.threshold = 0.001,
-  negligible.alpha = 0.3,
+  negligible.threshold = SYNTHDID_NEGLIGIBLE_WEIGHT_THRESHOLD,
+  negligible.alpha = SYNTHDID_NEGLIGIBLE_ALPHA_DEFAULT,
   se.method = "jackknife",
   units = NULL
 )
@@ -27,9 +27,29 @@ Defaults to 'jackknife' for speed. If 'none', don't plot a CI.}
 
 \item{units}{a list of control units --- elements of rownames(Y) --- to plot differences for. Defaults to NULL, meaning all of them.}
 }
+\value{
+A ggplot2 object showing unit-level treatment effect estimates.
+}
 \description{
 Plots unit by unit difference-in-differences. Dot size indicates the weights omega_i
 used in the average that yields our treatment effect estimate.
 This estimate and endpoints of a 95\% CI are plotted as horizontal lines.
 Requires ggplot2
+}
+\examples{
+\donttest{
+data(california_prop99)
+setup <- panel.matrices(california_prop99)
+tau.hat <- synthdid_estimate(setup$Y, setup$N0, setup$T0)
+
+# Plot all units
+synthdid_units_plot(tau.hat)
+
+# Plot specific units only
+# synthdid_units_plot(tau.hat, units = rownames(setup$Y)[1:10])
+
+# Compare multiple estimates
+tau.sc <- sc_estimate(setup$Y, setup$N0, setup$T0)
+synthdid_units_plot(list(tau.sc, tau.hat))
+}
 }

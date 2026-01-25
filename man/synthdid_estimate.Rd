@@ -11,7 +11,7 @@ synthdid_estimate(
   X = array(dim = c(dim(Y), 0)),
   noise.level = NULL,
   eta.omega = ((nrow(Y) - N0) * (ncol(Y) - T0))^(1/4),
-  eta.lambda = 1e-06,
+  eta.lambda = SYNTHDID_ETA_LAMBDA_DEFAULT,
   zeta.omega = NULL,
   zeta.lambda = NULL,
   omega.intercept = TRUE,
@@ -20,12 +20,12 @@ synthdid_estimate(
   update.omega = is.null(weights$omega),
   update.lambda = is.null(weights$lambda),
   min.decrease = NULL,
-  max.iter = 10000,
+  max.iter = SYNTHDID_MAX_ITER_DEFAULT,
   sparsify = sparsify_function,
-  max.iter.pre.sparsify = 100,
+  max.iter.pre.sparsify = SYNTHDID_MAX_ITER_PRE_SPARSIFY,
   estimate_se = FALSE,
   se_method = c("bootstrap", "jackknife", "placebo"),
-  se_replications = 200
+  se_replications = SYNTHDID_SE_REPLICATIONS_DEFAULT
 )
 }
 \arguments{
@@ -84,4 +84,33 @@ If estimate_se = TRUE, attributes 'se', 'se_method', and 'se_status' reflect the
 }
 \description{
 See 'Synthetic Difference in Differences' by Arkhangelsky et al. This implements Algorithm 1.
+}
+\examples{
+\donttest{
+# Estimate treatment effect using California Proposition 99 data
+data(california_prop99)
+setup <- panel.matrices(california_prop99)
+
+# Basic SynthDID estimate
+tau.hat <- synthdid_estimate(setup$Y, setup$N0, setup$T0)
+print(tau.hat)
+
+# With standard error computation
+tau.hat.se <- synthdid_estimate(setup$Y, setup$N0, setup$T0,
+                                 estimate_se = TRUE, se_method = "jackknife")
+sqrt(vcov(tau.hat.se))
+
+# Using covariates (if available)
+# Suppose X is a 3D array of time-varying covariates
+# tau.hat.cov <- synthdid_estimate(setup$Y, setup$N0, setup$T0, X = X)
+
+# Access weights and check convergence
+omega <- attr(tau.hat, "weights")$omega
+lambda <- attr(tau.hat, "weights")$lambda
+synthdid_converged(tau.hat)
+
+# Using custom regularization
+tau.hat.custom <- synthdid_estimate(setup$Y, setup$N0, setup$T0,
+                                     eta.omega = 0.5, eta.lambda = 1e-3)
+}
 }

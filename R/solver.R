@@ -31,20 +31,39 @@ contract3 <- function(X, v) {
 #'   iterating.
 #' @param max.iter Maximum number of Frank-Wolfe iterations.
 #'
-#' @return A list with fields \code{lambda} (weights) and \code{vals} (objective
-#'   trace).
+#' @return A list with fields \code{lambda} (weights), \code{vals} (objective
+#'   trace), \code{converged} (boolean), and \code{iterations} (count).
 #' @keywords internal
 sc.weight.fw <- function(Y,
                          zeta,
                          intercept = TRUE,
                          lambda = NULL,
-                         min.decrease = 1e-3,
-                         max.iter = 1000) {
+                         min.decrease = SYNTHDID_MIN_DECREASE_DEFAULT,
+                         max.iter = SYNTHDID_MAX_ITER_DEFAULT,
+                         warn_not_converged = TRUE) {
   T0 <- ncol(Y) - 1
   if (is.null(lambda)) {
     lambda <- rep(1 / T0, T0)
   }
-  sc_weight_fw_cpp(Y, zeta, intercept, lambda, min.decrease, max.iter)
+  result <- sc_weight_fw_cpp(Y, zeta, intercept, lambda, min.decrease, max.iter)
+
+  # Issue warning if optimization did not converge (lightweight check)
+  if (warn_not_converged && !result$converged) {
+    # Compute final decrease for diagnostic message (uses existing vals)
+    final_idx <- result$iterations
+    final_decrease <- if (final_idx >= 2 && !is.na(result$vals[final_idx]) && !is.na(result$vals[final_idx - 1])) {
+      result$vals[final_idx - 1] - result$vals[final_idx]
+    } else {
+      NA_real_
+    }
+
+    warning(sprintf(
+      "Frank-Wolfe optimization did not converge within %d iterations (final decrease: %.2e, threshold: %.2e)",
+      max.iter, final_decrease, min.decrease^2
+    ), call. = FALSE)
+  }
+
+  result
 }
 
 #' Joint Frank-Wolfe and gradient solver with covariates
@@ -68,8 +87,9 @@ sc.weight.fw <- function(Y,
 #' @param update.lambda,update.omega Logical flags indicating which weights to
 #'   update.
 #'
-#' @return A list with estimated \code{lambda}, \code{omega}, \code{beta}, and
-#'   the vector of objective values \code{vals}.
+#' @return A list with estimated \code{lambda}, \code{omega}, \code{beta},
+#'   the vector of objective values \code{vals}, convergence flag
+#'   \code{converged}, and iteration count \code{iterations}.
 #' @keywords internal
 sc.weight.fw.covariates <- function(Y,
                                     X = array(0, dim = c(dim(Y), 0)),
@@ -77,13 +97,14 @@ sc.weight.fw.covariates <- function(Y,
                                     zeta.omega = 0,
                                     lambda.intercept = TRUE,
                                     omega.intercept = TRUE,
-                                    min.decrease = 1e-3,
-                                    max.iter = 1000,
+                                    min.decrease = SYNTHDID_MIN_DECREASE_DEFAULT,
+                                    max.iter = SYNTHDID_MAX_ITER_DEFAULT,
                                     lambda = NULL,
                                     omega = NULL,
                                     beta = NULL,
                                     update.lambda = TRUE,
-                                    update.omega = TRUE) {
+                                    update.omega = TRUE,
+                                    warn_not_converged = TRUE) {
   stopifnot(
     length(dim(Y)) == 2,
     length(dim(X)) == 3,
@@ -110,6 +131,7 @@ sc.weight.fw.covariates <- function(Y,
 
   vals <- rep(NA, max.iter)
   t <- 0
+  converged <- FALSE
   Y.beta <- Y - contract3(X, beta)
   weights <- update.weights(
     Y.beta,
@@ -155,8 +177,35 @@ sc.weight.fw.covariates <- function(Y,
       zeta.omega
     )
     vals[t] <- weights$val
+
+    # Check if converged (hit stopping criterion before max_iter)
+    if (t >= 2 && abs(vals[t - 1] - vals[t]) <= min.decrease^2) {
+      converged <- TRUE
+    }
   }
-  list(lambda = weights$lambda, omega = weights$omega, beta = beta, vals = vals)
+
+  # Issue warning if not converged (lightweight check)
+  if (warn_not_converged && !converged && t >= max.iter) {
+    final_decrease <- if (t >= 2 && !is.na(vals[t]) && !is.na(vals[t - 1])) {
+      abs(vals[t - 1] - vals[t])
+    } else {
+      NA_real_
+    }
+
+    warning(sprintf(
+      "Covariate optimization did not converge within %d iterations (final decrease: %.2e, threshold: %.2e)",
+      max.iter, final_decrease, min.decrease^2
+    ), call. = FALSE)
+  }
+
+  list(
+    lambda = weights$lambda,
+    omega = weights$omega,
+    beta = beta,
+    vals = vals,
+    converged = converged,
+    iterations = t
+  )
 }
 
 

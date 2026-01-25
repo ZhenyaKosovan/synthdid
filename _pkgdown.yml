@@ -9,5 +9,12 @@ articles:
     - synthdid
     - more-plotting
     - formula-interface
+  - title: Advanced Usage
+    contents:
+    - advanced-topics
     - parallel-processing
     - benchmarking-parallel
+    - convergence-diagnostics
+  - title: Troubleshooting
+    contents:
+    - troubleshooting

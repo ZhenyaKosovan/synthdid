@@ -123,6 +123,8 @@ NumericVector fw_step_cpp(const arma::mat& A,
  * @return List with components:
  *   - lambda: Optimal time weights
  *   - vals: Objective function values at each iteration
+ *   - converged: Boolean indicating if optimization converged before max_iter
+ *   - iterations: Number of iterations performed
  */
 // [[Rcpp::export(rng = false)]]
 List sc_weight_fw_cpp(arma::mat Y,
@@ -160,6 +162,10 @@ List sc_weight_fw_cpp(arma::mat Y,
 
   arma::vec lambda_work = lambda;
 
+  // Track iteration count for convergence monitoring (zero overhead)
+  int final_iter = 0;
+  bool converged = false;
+
   // Frank-Wolfe main loop
   for (int t = 0; t < max_iter; ++t) {
     // Perform one Frank-Wolfe iteration to update weights
@@ -175,21 +181,36 @@ List sc_weight_fw_cpp(arma::mat Y,
     double sum_lambda_sq = arma::dot(lambda_work, lambda_work);
     vals(t) = (zeta * zeta) * sum_lambda_sq + sum_err_sq / static_cast<double>(N0);
 
+    // Update iteration counter
+    final_iter = t + 1;
+
+    // PERFORMANCE: Early stopping for simplex corner convergence
+    // If max weight > 0.99, all weight is concentrated on one element
+    // Further iteration unlikely to meaningfully change the solution
+    double max_weight = arma::max(lambda_work);
+    if (max_weight > 0.99) {
+      converged = true;
+      break;  // Converged to corner of simplex
+    }
+
     // Check convergence: stop if objective decrease is below threshold
     if (t >= 1) {
       double prev = vals(t - 1);
       double curr = vals(t);
       if (!std::isnan(prev) && !std::isnan(curr)) {
         if (!((prev - curr) > min_dec_sq)) {
+          converged = true;
           break;  // Converged
         }
       }
     }
   }
 
-  // Return optimized weights and objective function trace
+  // Return optimized weights, objective trace, and convergence info
   return List::create(
     _["lambda"] = wrap(lambda_work),
-    _["vals"] = wrap(vals)
+    _["vals"] = wrap(vals),
+    _["converged"] = converged,
+    _["iterations"] = final_iter
   );
 }

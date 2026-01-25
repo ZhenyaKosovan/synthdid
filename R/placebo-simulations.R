@@ -4,8 +4,19 @@
 #' @param Y, an NxT matrix of outcomes
 #' @param assignment_vector, an Nx1 vector of treatment assignments
 #' @param rank, the rank of the estimated signal component L
-#' @return a list with elements F, M, Sigma, pi as described in Section 3.1.1 
+#' @return a list with elements F, M, Sigma, pi as described in Section 3.1.1
 #'         and an element ar_coef with the AR(2) model coefficients underlying the covariance Sigma
+#' @examples
+#' \donttest{
+#' # Estimate DGP parameters from California Prop 99 data
+#' data(california_prop99)
+#' setup <- panel.matrices(california_prop99)
+#' dgp_params <- estimate_dgp(setup$Y, setup$Y[, ncol(setup$Y)] > 0, rank = 2)
+#'
+#' # Use parameters to simulate similar data
+#' simulated <- simulate_dgp(dgp_params, N1 = 1, T1 = 11)
+#' tau.sim <- synthdid_estimate(simulated$Y, simulated$N0, simulated$T0)
+#' }
 #' @export estimate_dgp
 estimate_dgp = function(Y, assignment_vector, rank) {
     N <- dim(Y)[1]
@@ -38,6 +49,20 @@ estimate_dgp = function(Y, assignment_vector, rank) {
 #' @param T1, the number of treated periods. 
 #' @return a list with 3 elements: the outcome matrix Y, the number of control units N0, and the number of control periods T0.
 #'         The first N0 rows of Y are for units assigned to control, the remaining rows are for units assigned to treatment.
+#' @examples
+#' \donttest{
+#' # Estimate DGP from real data
+#' data(california_prop99)
+#' setup <- panel.matrices(california_prop99)
+#' dgp_params <- estimate_dgp(setup$Y, setup$Y[, ncol(setup$Y)] > 0, rank = 2)
+#'
+#' # Simulate new data from estimated DGP
+#' sim_data <- simulate_dgp(dgp_params, N1 = 5, T1 = 10)
+#'
+#' # Estimate treatment effect on simulated data
+#' tau.sim <- synthdid_estimate(sim_data$Y, sim_data$N0, sim_data$T0)
+#' print(tau.sim)
+#' }
 #' @export simulate_dgp
 #' @importFrom mvtnorm rmvnorm
 simulate_dgp = function(parameters, N1, T1){
@@ -185,6 +210,18 @@ ar2_correlation_matrix <- function(ar_coef,T) {
 #' @param K - number of bins in the histogram;
 #' @param deg - degree of natural splines used in Poisson regression;
 #' @return a list with 2 fields, centers and density, which are K-dimensional vectors containing the bin centers and estimated density within each bin respectively.
+#' @examples
+#' \donttest{
+#' # Generate sample data
+#' x <- rnorm(1000, mean = 5, sd = 2)
+#'
+#' # Estimate density using Lindsey's method
+#' dens <- lindsey_density_estimate(x, K = 50, deg = 5)
+#'
+#' # Plot the result
+#' plot(dens$centers, dens$density, type = "l",
+#'      xlab = "x", ylab = "Density", main = "Lindsey Density Estimate")
+#' }
 #' @export lindsey_density_estimate
 lindsey_density_estimate <- function(x,K,deg){
     x_min <- min(x)

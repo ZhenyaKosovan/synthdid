@@ -16,3 +16,10 @@ its column names interpreted as Dates if possible
 timesteps are stored as colnames(Y), but column names cannot be Date objects.
 Instead, we use strings. If they are strings convertible to dates, return that
 }
+\examples{
+\donttest{
+data(california_prop99)
+setup <- panel.matrices(california_prop99)
+timesteps(setup$Y)
+}
+}

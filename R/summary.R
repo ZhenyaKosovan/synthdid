@@ -5,8 +5,27 @@
 #' @param sort.by, the index of the estimate to sort by. Defaults to 1.
 #' @param mass, which controls the length of the table. Defaults to 0.9.
 #' @param weight.type, 'omega' for units, 'lambda' for time periods
+#' @return A matrix of weights for the top controls/periods, sorted by importance.
+#' @examples
+#' \donttest{
+#' data(california_prop99)
+#' setup <- panel.matrices(california_prop99)
+#' tau.hat <- synthdid_estimate(setup$Y, setup$N0, setup$T0)
+#'
+#' # Show top control units
+#' synthdid_controls(tau.hat, weight.type = "omega")
+#'
+#' # Show top time periods
+#' synthdid_controls(tau.hat, weight.type = "lambda")
+#'
+#' # Compare multiple estimates
+#' tau.sc <- sc_estimate(setup$Y, setup$N0, setup$T0)
+#' synthdid_controls(list(sdid = tau.hat, sc = tau.sc))
+#' }
 #' @export synthdid_controls
-synthdid_controls <- function(estimates, sort.by = 1, mass = .9, weight.type = "omega") {
+synthdid_controls <- function(estimates, sort.by = 1,
+                              mass = SYNTHDID_CONTROLS_MASS_DEFAULT,
+                              weight.type = "omega") {
   if (inherits(estimates, "synthdid_estimate")) {
     estimates <- list(estimates)
   }
@@ -46,9 +65,24 @@ synthdid_controls <- function(estimates, sort.by = 1, mass = .9, weight.type = "
 #' @param weight.digits The number of digits to use when displaying weights (omega, lambda)
 #' @param fast Be fast but less accurate, e.g. jackknife instead of bootstrap se estimate
 #' @param ... Additional arguments (currently ignored).
+#' @return A summary object with estimate, standard error, weights, dimensions, and convergence info.
+#' @examples
+#' \donttest{
+#' data(california_prop99)
+#' setup <- panel.matrices(california_prop99)
+#' tau.hat <- synthdid_estimate(setup$Y, setup$N0, setup$T0)
+#'
+#' # Detailed summary with standard error
+#' summary(tau.hat)
+#'
+#' # Fast summary (uses jackknife instead of bootstrap)
+#' summary(tau.hat, fast = TRUE)
+#' }
 #' @method summary synthdid_estimate
 #' @export
-summary.synthdid_estimate <- function(object, weight.digits = 3, fast = FALSE, ...) {
+summary.synthdid_estimate <- function(object,
+                                      weight.digits = SYNTHDID_WEIGHT_DIGITS_DEFAULT,
+                                      fast = FALSE, ...) {
   N0 <- attr(object, "setup")$N0
   T0 <- attr(object, "setup")$T0
   desired_method <- if (fast) {
@@ -72,7 +106,8 @@ summary.synthdid_estimate <- function(object, weight.digits = 3, fast = FALSE, .
     dimensions = c(
       N1 = nrow(Y(object)) - N0, N0 = N0, N0.effective = round(1 / sum(omega(object)^2), weight.digits),
       T1 = ncol(Y(object)) - T0, T0 = T0, T0.effective = round(1 / sum(lambda(object)^2), weight.digits)
-    )
+    ),
+    convergence = attr(object, "convergence")
   )
 
   # Add formula interface info if available
@@ -89,6 +124,15 @@ summary.synthdid_estimate <- function(object, weight.digits = 3, fast = FALSE, .
 #' Print summary of synthdid object
 #' @param x A summary.synthdid_estimate object
 #' @param ... Additional arguments
+#' @return Invisibly returns the summary object
+#' @examples
+#' \donttest{
+#' data(california_prop99)
+#' setup <- panel.matrices(california_prop99)
+#' tau.hat <- synthdid_estimate(setup$Y, setup$N0, setup$T0)
+#' s <- summary(tau.hat)
+#' print(s)
+#' }
 #' @importFrom stats printCoefmat
 #' @export
 print.summary.synthdid_estimate <- function(x, ...) {
@@ -135,13 +179,61 @@ print.summary.synthdid_estimate <- function(x, ...) {
 
   # Print top weights
   cat("Top Control Units (omega weights):\n")
-  n_show <- min(5, nrow(x$controls))
+  n_show <- min(SYNTHDID_SUMMARY_TOP_N_DEFAULT, nrow(x$controls))
   print(head(x$controls, n_show))
   cat("\n")
 
   cat("Top Time Periods (lambda weights):\n")
-  n_show_periods <- min(5, nrow(x$periods))
+  n_show_periods <- min(SYNTHDID_SUMMARY_TOP_N_DEFAULT, nrow(x$periods))
   print(head(x$periods, n_show_periods))
+  cat("\n")
+
+  # Print convergence status
+  conv <- x$convergence
+  if (!is.null(conv)) {
+    cat("Convergence Status:\n")
+    if (conv$overall_converged) {
+      cat("  Overall: CONVERGED\n")
+    } else {
+      cat("  Overall: NOT CONVERGED\n")
+    }
+
+    # Show component status
+    if (!is.null(conv$lambda)) {
+      status_icon <- if (conv$lambda$converged) "\u2713" else "\u2717"  # ✓ or ✗
+      cat(sprintf("  Lambda:  %s (%d/%d iterations, %.1f%% utilization)\n",
+                  status_icon,
+                  conv$lambda$iterations,
+                  conv$lambda$max_iter,
+                  100 * conv$lambda$iterations / conv$lambda$max_iter))
+    }
+
+    if (!is.null(conv$omega)) {
+      status_icon <- if (conv$omega$converged) "\u2713" else "\u2717"
+      cat(sprintf("  Omega:   %s (%d/%d iterations, %.1f%% utilization)\n",
+                  status_icon,
+                  conv$omega$iterations,
+                  conv$omega$max_iter,
+                  100 * conv$omega$iterations / conv$omega$max_iter))
+    }
+
+    if (!is.null(conv$joint)) {
+      status_icon <- if (conv$joint$converged) "\u2713" else "\u2717"
+      cat(sprintf("  Joint:   %s (%d/%d iterations, %.1f%% utilization)\n",
+                  status_icon,
+                  conv$joint$iterations,
+                  conv$joint$max_iter,
+                  100 * conv$joint$iterations / conv$joint$max_iter))
+    }
+
+    # Add recommendation if not converged
+    if (!conv$overall_converged) {
+      cat("\n  Recommendation: Consider increasing max.iter or relaxing min.decrease.\n")
+      cat("  Use synthdid_convergence_info() for detailed diagnostics.\n")
+    }
+  } else {
+    cat("Convergence Status: Not available (estimate from older version)\n")
+  }
 
   invisible(x)
 }

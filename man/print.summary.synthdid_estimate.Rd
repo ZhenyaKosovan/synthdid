@@ -11,6 +11,18 @@
 
 \item{...}{Additional arguments}
 }
+\value{
+Invisibly returns the summary object
+}
 \description{
 Print summary of synthdid object
+}
+\examples{
+\donttest{
+data(california_prop99)
+setup <- panel.matrices(california_prop99)
+tau.hat <- synthdid_estimate(setup$Y, setup$N0, setup$T0)
+s <- summary(tau.hat)
+print(s)
+}
 }

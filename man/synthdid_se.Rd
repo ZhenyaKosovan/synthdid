@@ -9,6 +9,26 @@ synthdid_se(...)
 \arguments{
 \item{...}{Any valid arguments for vcov.synthdid_estimate}
 }
+\value{
+A scalar standard error estimate.
+}
 \description{
 Calculate the standard error of a synthetic diff in diff estimate. Deprecated. Use vcov.synthdid_estimate.
+}
+\examples{
+\donttest{
+# This function is deprecated. Use sqrt(vcov(...)) instead.
+data(california_prop99)
+setup <- panel.matrices(california_prop99)
+tau.hat <- synthdid_estimate(setup$Y, setup$N0, setup$T0)
+
+# Deprecated approach (still works)
+se.old <- synthdid_se(tau.hat, method = "jackknife")
+
+# Preferred approach
+se.new <- sqrt(vcov(tau.hat, method = "jackknife"))
+
+# Both give the same result
+all.equal(se.old, se.new)
+}
 }

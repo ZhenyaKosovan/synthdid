@@ -11,13 +11,14 @@ sc.weight.fw.covariates(
   zeta.omega = 0,
   lambda.intercept = TRUE,
   omega.intercept = TRUE,
-  min.decrease = 0.001,
-  max.iter = 1000,
+  min.decrease = SYNTHDID_MIN_DECREASE_DEFAULT,
+  max.iter = SYNTHDID_MAX_ITER_DEFAULT,
   lambda = NULL,
   omega = NULL,
   beta = NULL,
   update.lambda = TRUE,
-  update.omega = TRUE
+  update.omega = TRUE,
+  warn_not_converged = TRUE
 )
 }
 \arguments{
@@ -43,8 +44,9 @@ weights and zero coefficients.}
 update.}
 }
 \value{
-A list with estimated \code{lambda}, \code{omega}, \code{beta}, and
-the vector of objective values \code{vals}.
+A list with estimated \code{lambda}, \code{omega}, \code{beta},
+the vector of objective values \code{vals}, convergence flag
+\code{converged}, and iteration count \code{iterations}.
 }
 \description{
 Alternates Frank-Wolfe updates for \code{lambda} and \code{omega} with

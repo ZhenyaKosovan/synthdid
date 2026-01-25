@@ -23,3 +23,23 @@ an object like that returned by synthdid_estimate
 synthdid_estimate for diff-in-diff estimates.
 Takes all the same parameters, but by default, passes options to use the diff-in-diff estimator
 }
+\examples{
+\donttest{
+# Estimate treatment effect using difference-in-differences
+data(california_prop99)
+setup <- panel.matrices(california_prop99)
+
+# DID estimate
+tau.did <- did_estimate(setup$Y, setup$N0, setup$T0)
+print(tau.did)
+
+# Compare all three estimators
+tau.sc <- sc_estimate(setup$Y, setup$N0, setup$T0)
+tau.sdid <- synthdid_estimate(setup$Y, setup$N0, setup$T0)
+estimates <- list(did = tau.did, sc = tau.sc, sdid = tau.sdid)
+sapply(estimates, function(x) x)
+
+# Visualize the differences
+# synthdid_plot(estimates)
+}
+}

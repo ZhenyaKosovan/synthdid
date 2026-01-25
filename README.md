@@ -177,7 +177,7 @@ This package uses **RcppArmadillo** with AVX vectorization for significant perfo
 ## Package Interface Comparison
 
 | Task | Old Interface | New Interface |
-|------------------------|------------------------|------------------------|
+|----|----|----|
 | Basic estimation | `setup <- panel.matrices(data)`<br>`synthdid_estimate(setup$Y, setup$N0, setup$T0)` | `synthdid(outcome ~ treatment, data, index)` |
 | Get coefficient | `c(result)` | `coef(result)` |
 | Summary | Custom function | `summary(result)` |

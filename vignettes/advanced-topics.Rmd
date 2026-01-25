@@ -1,0 +1,576 @@
+---
+title: "Advanced Topics in synthdid"
+author: "synthdid package authors"
+date: "`r Sys.Date()`"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Advanced Topics in synthdid}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>",
+  fig.width = 7,
+  fig.height = 5
+)
+```
+
+# Introduction
+
+This vignette covers advanced usage of the `synthdid` package, including custom regularization, time-varying covariates, diagnostic checks, and large-scale applications. It assumes familiarity with the basic package functionality covered in the main vignette.
+
+```{r load-package, message=FALSE}
+library(synthdid)
+```
+
+# Custom Regularization
+
+## Understanding Regularization Parameters
+
+The synthdid estimator uses ridge regularization controlled by two parameters:
+
+- **`eta.omega`**: Controls regularization for unit weights (ω)
+- **`eta.lambda`**: Controls regularization for time weights (λ)
+
+These are scaled by the estimated noise level σ to get the actual regularization:
+- `zeta.omega = eta.omega * noise.level`
+- `zeta.lambda = eta.lambda * noise.level`
+
+## Default Values
+
+```{r defaults, eval=FALSE}
+# Default regularization
+# eta.omega = (N1 * T1)^(1/4)  where N1 = treated units, T1 = treated periods
+# eta.lambda = 1e-6  (essentially no regularization for time weights)
+
+data(california_prop99)
+setup <- panel.matrices(california_prop99)
+
+tau.default <- synthdid_estimate(setup$Y, setup$N0, setup$T0)
+```
+
+## When to Adjust Regularization
+
+Increase regularization when:
+- Optimization doesn't converge
+- Weights are extremely concentrated (few units get all the weight)
+- You have many similar control units (collinearity)
+- Estimates are unstable across specifications
+
+Decrease regularization when:
+- You want weights closer to the unregularized solution
+- Data has low noise (good fit is achievable)
+- You have strong prior knowledge of appropriate controls
+
+## Examples of Custom Regularization
+
+```{r custom-regularization, eval=FALSE}
+# More regularization on unit weights
+tau.high.omega <- synthdid_estimate(setup$Y, setup$N0, setup$T0,
+                                     eta.omega = 2)
+
+# More regularization on time weights
+tau.high.lambda <- synthdid_estimate(setup$Y, setup$N0, setup$T0,
+                                      eta.lambda = 0.01)
+
+# Both
+tau.high.both <- synthdid_estimate(setup$Y, setup$N0, setup$T0,
+                                    eta.omega = 2, eta.lambda = 0.01)
+
+# Compare estimates
+c(default = tau.default,
+  high.omega = tau.high.omega,
+  high.lambda = tau.high.lambda,
+  high.both = tau.high.both)
+```
+
+## Grid Search for Optimal Regularization
+
+```{r grid-search, eval=FALSE}
+# Define grid
+eta_omega_grid <- c(0.1, 0.5, 1, 2, 5)
+eta_lambda_grid <- c(1e-6, 1e-4, 1e-3, 1e-2)
+
+# Cross-validation function (simplified)
+cv_error <- function(eta_omega, eta_lambda) {
+  # Use placebo test to assess quality
+  tau.placebo <- synthdid_placebo(
+    synthdid_estimate(setup$Y, setup$N0, setup$T0,
+                      eta.omega = eta_omega, eta.lambda = eta_lambda)
+  )
+  # Placebo should be close to zero
+  abs(tau.placebo)
+}
+
+# Grid search (simplified example)
+results <- expand.grid(eta_omega = eta_omega_grid, eta_lambda = eta_lambda_grid)
+results$cv_error <- mapply(cv_error, results$eta_omega, results$eta_lambda)
+
+# Best parameters
+best_params <- results[which.min(results$cv_error), ]
+print(best_params)
+```
+
+# Time-Varying Covariates
+
+## Including Covariates
+
+Time-varying covariates can improve estimates by controlling for confounders:
+
+```{r covariates, eval=FALSE}
+# Create a 3D array: N x T x K where K is number of covariates
+N <- nrow(setup$Y)
+T <- ncol(setup$Y)
+K <- 2  # Two covariates
+
+X <- array(dim = c(N, T, K))
+
+# Fill with covariate data (example: economic indicators)
+# X[,,1] <- gdp_matrix
+# X[,,2] <- unemployment_matrix
+
+# Estimate with covariates
+tau.cov <- synthdid_estimate(setup$Y, setup$N0, setup$T0, X = X)
+
+# Access covariate coefficients
+beta <- attr(tau.cov, "weights")$beta
+print(beta)
+```
+
+## Memory Considerations with Covariates
+
+Covariates can significantly increase memory usage:
+
+```{r covariate-memory, eval=FALSE}
+# Estimate memory requirements
+mem_no_cov <- synthdid_memory_estimate(N = 100, T = 50, K = 0)
+mem_with_cov <- synthdid_memory_estimate(N = 100, T = 50, K = 10)
+
+print(mem_no_cov)
+print(mem_with_cov)
+```
+
+The package uses zero-copy memory views to minimize overhead, but large K can still be expensive.
+
+## Best Practices for Covariates
+
+1. **Standardize covariates**: Scale to similar magnitudes
+2. **Avoid collinearity**: Check correlations between covariates
+3. **Use domain knowledge**: Include covariates that theory suggests are important
+4. **Check sensitivity**: Compare estimates with and without covariates
+
+```{r covariate-sensitivity, eval=FALSE}
+tau.no.cov <- synthdid_estimate(setup$Y, setup$N0, setup$T0)
+tau.with.cov <- synthdid_estimate(setup$Y, setup$N0, setup$T0, X = X)
+
+c(without.covariates = tau.no.cov, with.covariates = tau.with.cov)
+```
+
+# Diagnostic Checks
+
+## Pre-Treatment Fit Quality
+
+Check how well the synthetic control matches the treated unit in pre-treatment periods:
+
+```{r pretreatment-fit, eval=FALSE}
+tau.hat <- synthdid_estimate(setup$Y, setup$N0, setup$T0)
+
+# Visualize fit
+synthdid_plot(tau.hat)
+
+# Quantify fit with RMSE
+weights <- attr(tau.hat, "weights")
+Y <- attr(tau.hat, "setup")$Y
+N0 <- attr(tau.hat, "setup")$N0
+T0 <- attr(tau.hat, "setup")$T0
+
+# Synthetic control prediction for treated unit in pre-period
+Y_control_pre <- Y[1:N0, 1:T0]
+Y_treated_pre <- Y[(N0+1):nrow(Y), 1:T0]
+Y_synth_pre <- t(weights$omega) %*% Y_control_pre
+
+# RMSE
+rmse <- sqrt(mean((Y_treated_pre - Y_synth_pre)^2))
+print(rmse)
+```
+
+## Weight Diagnostics
+
+Examine the distribution of weights:
+
+```{r weight-diagnostics, eval=FALSE}
+# Top control units
+synthdid_controls(tau.hat, weight.type = "omega")
+
+# Top time periods
+synthdid_controls(tau.hat, weight.type = "lambda")
+
+# Weight concentration (effective number of units/periods)
+omega <- attr(tau.hat, "weights")$omega
+lambda <- attr(tau.hat, "weights")$lambda
+
+n_effective_units <- 1 / sum(omega^2)
+n_effective_periods <- 1 / sum(lambda^2)
+
+cat(sprintf("Effective N0: %.1f (out of %d)\n", n_effective_units, N0))
+cat(sprintf("Effective T0: %.1f (out of %d)\n", n_effective_periods, T0))
+```
+
+**Interpretation:**
+- Low effective N or T suggests few units/periods drive the estimate
+- Can indicate sensitivity to specific controls
+- May warrant robustness checks (leave-one-out, etc.)
+
+## Parallel Trends Assessment
+
+While synthdid doesn't assume strict parallel trends, checking them is still informative:
+
+```{r parallel-trends, eval=FALSE}
+# Plot trends for treated vs synthetic control
+synthdid_plot(tau.hat, trajectory.alpha = 0.8)
+
+# Formal placebo test
+tau.placebo <- synthdid_placebo(tau.hat, treated.fraction = 0.5)
+
+# Placebo should be close to zero if trends are parallel
+c(estimate = tau.hat, placebo = tau.placebo)
+
+# Plot placebo comparison
+synthdid_placebo_plot(tau.hat, treated.fraction = 0.5)
+```
+
+## Sensitivity Analysis
+
+### Leave-One-Out Analysis
+
+```{r leave-one-out, eval=FALSE}
+# Remove each control unit and re-estimate
+N0 <- attr(tau.hat, "setup")$N0
+loo_estimates <- sapply(1:N0, function(i) {
+  Y_loo <- setup$Y[-i, ]
+  synthdid_estimate(Y_loo, N0 - 1, setup$T0)
+})
+
+# Check sensitivity
+summary(loo_estimates)
+plot(loo_estimates, main = "Leave-One-Out Estimates",
+     ylab = "Treatment Effect", xlab = "Dropped Unit")
+abline(h = tau.hat, col = "red", lty = 2)
+```
+
+### Varying Time Window
+
+```{r vary-window, eval=FALSE}
+# Try different pre-treatment window lengths
+T0_values <- seq(10, setup$T0, by = 5)
+window_estimates <- sapply(T0_values, function(t0) {
+  Y_window <- setup$Y[, 1:(t0 + (ncol(setup$Y) - setup$T0))]
+  synthdid_estimate(Y_window, setup$N0, t0)
+})
+
+plot(T0_values, window_estimates, type = "b",
+     xlab = "Pre-treatment periods", ylab = "Treatment Effect")
+```
+
+# Large-Scale Applications
+
+## Parallel Processing
+
+For computationally intensive tasks (especially standard errors), use parallel processing:
+
+```{r parallel-processing, eval=FALSE}
+library(future)
+
+# Set up parallel backend
+plan(multisession, workers = 4)  # Use 4 cores
+
+# Bootstrap SE will automatically use parallel workers
+tau.hat <- synthdid_estimate(setup$Y, setup$N0, setup$T0,
+                              estimate_se = TRUE,
+                              se_method = "bootstrap",
+                              se_replications = 1000)
+
+# Remember to close parallel workers when done
+plan(sequential)
+```
+
+## BLAS Thread Management
+
+The package automatically manages BLAS threads to prevent oversubscription:
+
+```{r blas-threads, eval=FALSE}
+# This happens automatically, but you can verify:
+# - During estimation, BLAS threads are limited
+# - After estimation, original thread count is restored
+
+# For manual control (advanced):
+# source("R/blas_threads.R")
+# original <- get_blas_num_threads()
+# set_blas_num_threads(2)
+# # ... computation ...
+# set_blas_num_threads(original)
+```
+
+## Memory-Efficient Workflows
+
+For very large problems:
+
+```{r memory-efficient, eval=FALSE}
+# 1. Estimate without SE first
+tau.hat <- synthdid_estimate(setup$Y, setup$N0, setup$T0, estimate_se = FALSE)
+
+# 2. Save estimate
+saveRDS(tau.hat, "tau_estimate.rds")
+
+# 3. Compute SE in separate session with more memory
+tau.hat <- readRDS("tau_estimate.rds")
+se <- sqrt(vcov(tau.hat, method = "jackknife"))  # Jackknife is memory-efficient
+
+# 4. Store SE as attribute
+attr(tau.hat, "se") <- se
+attr(tau.hat, "se_method") <- "jackknife"
+```
+
+## Batch Processing Multiple Datasets
+
+```{r batch-processing, eval=FALSE}
+# Function to process one dataset
+process_dataset <- function(data_file) {
+  data <- readRDS(data_file)
+  setup <- panel.matrices(data)
+
+  tau <- synthdid_estimate(setup$Y, setup$N0, setup$T0,
+                            estimate_se = TRUE, se_method = "jackknife")
+
+  list(
+    estimate = c(tau),
+    se = attr(tau, "se"),
+    converged = synthdid_converged(tau)
+  )
+}
+
+# Process all files
+data_files <- list.files("data/", pattern = "*.rds", full.names = TRUE)
+results <- lapply(data_files, process_dataset)
+
+# Summarize
+results_df <- do.call(rbind, lapply(results, as.data.frame))
+print(results_df)
+```
+
+# Advanced Plotting
+
+## Customizing synthdid_plot
+
+```{r custom-plot, eval=FALSE}
+library(ggplot2)
+
+# Basic plot
+p <- synthdid_plot(tau.hat)
+
+# Customize with ggplot2
+p +
+  ggtitle("California Prop 99: Effect on Cigarette Sales") +
+  theme_minimal() +
+  theme(legend.position = "bottom") +
+  scale_color_manual(values = c("treated" = "darkred",
+                                 "synthetic control" = "steelblue"))
+```
+
+## Comparing Multiple Estimates
+
+```{r compare-plots, eval=FALSE}
+# Estimate with different methods
+tau.did <- did_estimate(setup$Y, setup$N0, setup$T0)
+tau.sc <- sc_estimate(setup$Y, setup$N0, setup$T0)
+tau.sdid <- synthdid_estimate(setup$Y, setup$N0, setup$T0)
+
+# Plot all three
+estimates <- list(tau.did, tau.sc, tau.sdid)
+synthdid_plot(estimates, facet = c("DID", "SC", "SynthDID"),
+              facet.vertical = TRUE)
+
+# Or overlay in same plot
+synthdid_plot(estimates, facet = c("All", "All", "All"),
+              alpha.multiplier = c(0.5, 0.5, 1))
+```
+
+## Animated Plots
+
+```{r animated-plots, eval=FALSE}
+# Create animation showing effect of overlay parameter
+overlay_values <- seq(0, 1, by = 0.1)
+
+plots <- lapply(overlay_values, function(ov) {
+  synthdid_plot(tau.hat, overlay = ov) +
+    ggtitle(sprintf("Overlay = %.1f", ov))
+})
+
+# Combine into animation (requires gganimate)
+# library(gganimate)
+# animation <- plots %>% transition_states(overlay)
+```
+
+# Working with the Formula Interface
+
+## Advanced Formula Specifications
+
+```{r formula-advanced, eval=FALSE}
+# Basic usage
+result <- synthdid(PacksPerCapita ~ treated,
+                   data = california_prop99,
+                   index = c("State", "Year"))
+
+# Extract and inspect components
+coef(result)
+confint(result)
+summary(result)
+
+# Predictions
+predict(result, type = "counterfactual")
+predict(result, type = "effect")
+
+# Residual diagnostics
+resids <- residuals(result, type = "pretreatment")
+plot(resids, main = "Pre-treatment Residuals")
+```
+
+## Model Comparison with Formula Interface
+
+```{r formula-comparison, eval=FALSE}
+# Fit all three estimators
+fit_did <- synthdid(PacksPerCapita ~ treated, data = california_prop99,
+                    index = c("State", "Year"), method = "did")
+fit_sc <- synthdid(PacksPerCapita ~ treated, data = california_prop99,
+                   index = c("State", "Year"), method = "sc")
+fit_sdid <- synthdid(PacksPerCapita ~ treated, data = california_prop99,
+                     index = c("State", "Year"), method = "synthdid")
+
+# Compare
+cbind(
+  DID = coef(fit_did),
+  SC = coef(fit_sc),
+  SynthDID = coef(fit_sdid)
+)
+```
+
+# Simulation Studies
+
+## Power Analysis
+
+```{r power-analysis, eval=FALSE}
+# Function to simulate data and test
+simulate_and_test <- function(true_effect = 1, n_sim = 100) {
+  data <- random.low.rank()
+
+  # Add treatment effect
+  N0 <- data$N0
+  T0 <- data$T0
+  data$Y[(N0+1):nrow(data$Y), (T0+1):ncol(data$Y)] <-
+    data$Y[(N0+1):nrow(data$Y), (T0+1):ncol(data$Y)] + true_effect
+
+  # Estimate
+  tau.hat <- synthdid_estimate(data$Y, data$N0, data$T0,
+                                estimate_se = TRUE, se_method = "jackknife")
+
+  # Test
+  se <- attr(tau.hat, "se")
+  z_stat <- tau.hat / se
+  p_value <- 2 * pnorm(-abs(z_stat))
+
+  list(estimate = c(tau.hat), se = se, p_value = p_value)
+}
+
+# Run simulations
+set.seed(123)
+sims <- replicate(100, simulate_and_test(true_effect = 1), simplify = FALSE)
+
+# Power
+power <- mean(sapply(sims, function(s) s$p_value < 0.05))
+cat(sprintf("Power: %.2f\n", power))
+
+# Coverage
+coverage <- mean(sapply(sims, function(s) {
+  ci_lower <- s$estimate - 1.96 * s$se
+  ci_upper <- s$estimate + 1.96 * s$se
+  ci_lower <= 1 && 1 <= ci_upper
+}))
+cat(sprintf("95%% CI Coverage: %.2f\n", coverage))
+```
+
+## Placebo Studies
+
+```{r placebo-studies, eval=FALSE}
+# Generate placebo distribution
+n_placebos <- 100
+placebo_estimates <- replicate(n_placebos, {
+  data <- random.low.rank()  # No treatment effect
+  synthdid_estimate(data$Y, data$N0, data$T0)
+})
+
+# Plot distribution
+hist(placebo_estimates, breaks = 30, main = "Placebo Distribution",
+     xlab = "Estimate", col = "lightblue")
+abline(v = 0, col = "red", lwd = 2, lty = 2)
+
+# Compare to actual estimate
+abline(v = tau.hat, col = "darkblue", lwd = 2)
+legend("topright", legend = c("True null", "Actual estimate"),
+       col = c("red", "darkblue"), lwd = 2, lty = c(2, 1))
+```
+
+# Performance Optimization
+
+## Early Stopping and Sparsification
+
+The package implements several performance optimizations:
+
+```{r performance, eval=FALSE}
+# Disable sparsification (for comparison)
+tau.no.sparse <- synthdid_estimate(setup$Y, setup$N0, setup$T0,
+                                    sparsify = NULL)
+
+# Enable sparsification (default)
+tau.with.sparse <- synthdid_estimate(setup$Y, setup$N0, setup$T0,
+                                      sparsify = sparsify_function)
+
+# Custom sparsification function
+my_sparsify <- function(v) {
+  # More aggressive sparsification
+  v[v <= max(v) / 10] <- 0
+  v / sum(v)
+}
+
+tau.custom.sparse <- synthdid_estimate(setup$Y, setup$N0, setup$T0,
+                                        sparsify = my_sparsify)
+```
+
+## Benchmark Different Approaches
+
+```{r benchmark, eval=FALSE}
+library(microbenchmark)
+
+# Compare SE methods
+benchmark <- microbenchmark(
+  bootstrap = vcov(tau.hat, method = "bootstrap", replications = 100),
+  jackknife = vcov(tau.hat, method = "jackknife"),
+  placebo = vcov(tau.hat, method = "placebo", replications = 100),
+  times = 10
+)
+
+print(benchmark)
+```
+
+# References
+
+Arkhangelsky, D., Athey, S., Hirshberg, D. A., Imbens, G. W., & Wager, S. (2021).
+Synthetic difference-in-differences. *American Economic Review*, 111(12), 4088-4118.
+
+# See Also
+
+- Main vignette: `vignette("synthdid")`
+- Troubleshooting: `vignette("troubleshooting")`
+- Convergence diagnostics: `vignette("convergence-diagnostics")`

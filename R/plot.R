@@ -50,14 +50,51 @@
 #' @param alpha.multiplier, a vector of the same length as estimates, is useful for comparing multiple estimates in
 #'        one facet but highlighting one or several. All plot elements associated with the estimate are displayed
 #'        with alpha multiplied by the corresponding element of alpha.multiplier. Defaults to a vector of ones.
+#' @return A ggplot2 object that can be further customized or displayed.
+#' @examples
+#' \donttest{
+#' # Basic plot of a single estimate
+#' data(california_prop99)
+#' setup <- panel.matrices(california_prop99)
+#' tau.hat <- synthdid_estimate(setup$Y, setup$N0, setup$T0)
+#' synthdid_plot(tau.hat)
+#'
+#' # Compare multiple estimators
+#' tau.sc <- sc_estimate(setup$Y, setup$N0, setup$T0)
+#' tau.did <- did_estimate(setup$Y, setup$N0, setup$T0)
+#' synthdid_plot(list(tau.did, tau.sc, tau.hat),
+#'               facet = c("DID", "SC", "Synthetic DID"))
+#'
+#' # Overlay estimates in the same facet
+#' synthdid_plot(list(tau.sc, tau.hat),
+#'               facet = c("Comparison", "Comparison"))
+#'
+#' # Show specific units as spaghetti plots
+#' # synthdid_plot(tau.hat, spaghetti.units = rownames(setup$Y)[1:5])
+#'
+#' # Customize the plot
+#' p <- synthdid_plot(tau.hat, trajectory.alpha = 0.7)
+#' p + ggplot2::ggtitle("California Proposition 99 Analysis")
+#' }
 #' @export synthdid_plot
 synthdid_plot <- function(estimates, treated.name = "treated", control.name = "synthetic control",
                           spaghetti.units = c(), spaghetti.matrices = NULL,
                           facet = NULL, facet.vertical = TRUE, lambda.comparable = !is.null(facet), overlay = 0,
-                          lambda.plot.scale = 3, trajectory.linetype = 1, effect.curvature = .3, line.width = .5, guide.linetype = 2, point.size = 1,
-                          trajectory.alpha = .5, diagram.alpha = .95, effect.alpha = .95, onset.alpha = .3, ci.alpha = .3,
-                          spaghetti.line.width = .2, spaghetti.label.size = 2,
-                          spaghetti.line.alpha = .3, spaghetti.label.alpha = .5,
+                          lambda.plot.scale = SYNTHDID_LAMBDA_PLOT_SCALE_DEFAULT,
+                          trajectory.linetype = 1,
+                          effect.curvature = SYNTHDID_EFFECT_CURVATURE_DEFAULT,
+                          line.width = SYNTHDID_LINE_WIDTH_DEFAULT,
+                          guide.linetype = 2,
+                          point.size = SYNTHDID_POINT_SIZE_DEFAULT,
+                          trajectory.alpha = SYNTHDID_TRAJECTORY_ALPHA_DEFAULT,
+                          diagram.alpha = SYNTHDID_DIAGRAM_ALPHA_DEFAULT,
+                          effect.alpha = SYNTHDID_EFFECT_ALPHA_DEFAULT,
+                          onset.alpha = SYNTHDID_ONSET_ALPHA_DEFAULT,
+                          ci.alpha = SYNTHDID_CI_ALPHA_DEFAULT,
+                          spaghetti.line.width = SYNTHDID_SPAGHETTI_LINE_WIDTH_DEFAULT,
+                          spaghetti.label.size = SYNTHDID_SPAGHETTI_LABEL_SIZE_DEFAULT,
+                          spaghetti.line.alpha = SYNTHDID_SPAGHETTI_LINE_ALPHA_DEFAULT,
+                          spaghetti.label.alpha = SYNTHDID_SPAGHETTI_LABEL_ALPHA_DEFAULT,
                           se.method = "jackknife", alpha.multiplier = NULL) {
   if (requireNamespace("ggplot2", quietly = TRUE)) {
     .ignore <- tryCatch(attachNamespace("ggplot2"), error = function(e) e)
@@ -174,11 +211,13 @@ synthdid_plot <- function(estimates, treated.name = "treated", control.name = "s
       xscale = max(time) - post.time, color = groups[control]
     )
     ub.arrows <- data.frame(
-      x = post.time, xend = post.time, y = sdid.post + 1.96 * se, yend = treated.post,
+      x = post.time, xend = post.time,
+      y = sdid.post + SYNTHDID_CI_Z_95 * se, yend = treated.post,
       xscale = max(time) - post.time, color = groups[control]
     )
     lb.arrows <- data.frame(
-      x = post.time, xend = post.time, y = sdid.post - 1.96 * se, yend = treated.post,
+      x = post.time, xend = post.time,
+      y = sdid.post - SYNTHDID_CI_Z_95 * se, yend = treated.post,
       xscale = max(time) - post.time, color = groups[control]
     )
     spaghetti.lines <- data.frame(
@@ -363,6 +402,14 @@ synthdid_plot <- function(estimates, treated.name = "treated", control.name = "s
 #' @param estimate, as output by synthdid_estimate.
 #' @param overlay, binary, indicates whether plots should be overlaid or shown in different facets. Defaults to FALSE.
 #' @param treated.fraction as in synthdid_placebo
+#' @return A ggplot2 object showing the estimate and placebo comparison.
+#' @examples
+#' \donttest{
+#' data(california_prop99)
+#' setup <- panel.matrices(california_prop99)
+#' tau.hat <- synthdid_estimate(setup$Y, setup$N0, setup$T0)
+#' synthdid_placebo_plot(tau.hat, treated.fraction = 0.5)
+#' }
 #' @export synthdid_placebo_plot
 synthdid_placebo_plot <- function(estimate, overlay = FALSE, treated.fraction = NULL) {
   if (requireNamespace("ggplot2", quietly = TRUE)) {
@@ -388,8 +435,28 @@ synthdid_placebo_plot <- function(estimate, overlay = FALSE, treated.fraction = 
 #' @param se.method the method used to calculate standard errors for the CI. See vcov.synthdid_estimate.
 #'        Defaults to 'jackknife' for speed. If 'none', don't plot a CI.
 #' @param units a list of control units --- elements of rownames(Y) --- to plot differences for. Defaults to NULL, meaning all of them.
+#' @return A ggplot2 object showing unit-level treatment effect estimates.
+#' @examples
+#' \donttest{
+#' data(california_prop99)
+#' setup <- panel.matrices(california_prop99)
+#' tau.hat <- synthdid_estimate(setup$Y, setup$N0, setup$T0)
+#'
+#' # Plot all units
+#' synthdid_units_plot(tau.hat)
+#'
+#' # Plot specific units only
+#' # synthdid_units_plot(tau.hat, units = rownames(setup$Y)[1:10])
+#'
+#' # Compare multiple estimates
+#' tau.sc <- sc_estimate(setup$Y, setup$N0, setup$T0)
+#' synthdid_units_plot(list(tau.sc, tau.hat))
+#' }
 #' @export synthdid_units_plot
-synthdid_units_plot <- function(estimates, negligible.threshold = .001, negligible.alpha = .3, se.method = "jackknife", units = NULL) {
+synthdid_units_plot <- function(estimates,
+                                negligible.threshold = SYNTHDID_NEGLIGIBLE_WEIGHT_THRESHOLD,
+                                negligible.alpha = SYNTHDID_NEGLIGIBLE_ALPHA_DEFAULT,
+                                se.method = "jackknife", units = NULL) {
   if (requireNamespace("ggplot2", quietly = TRUE)) {
     .ignore <- tryCatch(attachNamespace("ggplot2"), error = function(e) e)
   } else {
@@ -436,8 +503,10 @@ synthdid_units_plot <- function(estimates, negligible.threshold = .001, negligib
     geom_point(aes(x = unit, y = y, size = weight), data = plot.data[plot.data$weight <= negligible.threshold, ], alpha = negligible.alpha, shape = 4, show.legend = FALSE) +
     geom_hline(aes(yintercept = estimate), linewidth = .75)
   if (!all(is.na(plot.data$se))) {
-    p <- p + geom_hline(aes(yintercept = estimate - 1.96 * se), linewidth = .5, alpha = .5) +
-      geom_hline(aes(yintercept = estimate + 1.96 * se), linewidth = .5, alpha = .5)
+    p <- p + geom_hline(aes(yintercept = estimate - SYNTHDID_CI_Z_95 * se),
+                        linewidth = SYNTHDID_LINE_WIDTH_DEFAULT, alpha = 0.5) +
+      geom_hline(aes(yintercept = estimate + SYNTHDID_CI_Z_95 * se),
+                 linewidth = SYNTHDID_LINE_WIDTH_DEFAULT, alpha = 0.5)
   }
   p + facet_grid(. ~ estimator) + xlab("") + ylab("") + guides(shape = "none") +
     theme_light() + theme(axis.text.x = element_text(angle = 90, hjust = 1))
@@ -448,6 +517,14 @@ synthdid_units_plot <- function(estimates, negligible.threshold = .001, negligib
 #' as a function of the number of Frank-Wolfe / Gradient steps taken.
 #' Requires ggplot2
 #' @param estimates, a list of estimates output by synthdid_estimate. Or a single estimate.
+#' @return A ggplot2 object showing the convergence diagnostics.
+#' @examples
+#' \donttest{
+#' data(california_prop99)
+#' setup <- panel.matrices(california_prop99)
+#' tau.hat <- synthdid_estimate(setup$Y, setup$N0, setup$T0)
+#' synthdid_rmse_plot(tau.hat)
+#' }
 #' @export synthdid_rmse_plot
 synthdid_rmse_plot <- function(estimates) { # pass an estimate or list of estimates
   if (requireNamespace("ggplot2", quietly = TRUE)) {
@@ -484,6 +561,14 @@ synthdid_rmse_plot <- function(estimates) { # pass an estimate or list of estima
 #' Plot a synthdid object
 #' @param x The object to plot
 #' @param ... Additional arguments (currently ignored).
+#' @return A ggplot2 object.
+#' @examples
+#' \donttest{
+#' data(california_prop99)
+#' setup <- panel.matrices(california_prop99)
+#' tau.hat <- synthdid_estimate(setup$Y, setup$N0, setup$T0)
+#' plot(tau.hat)
+#' }
 #' @method plot synthdid_estimate
 #' @export
 plot.synthdid_estimate <- function(x, ...) {

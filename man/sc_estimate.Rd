@@ -6,7 +6,7 @@
 Takes all the same parameters, but by default, passes options to use the synthetic control estimator
 By default, this uses only 'infinitesimal' ridge regularization when estimating the weights.}
 \usage{
-sc_estimate(Y, N0, T0, eta.omega = 1e-06, ...)
+sc_estimate(Y, N0, T0, eta.omega = SYNTHDID_ETA_OMEGA_SC_DEFAULT, ...)
 }
 \arguments{
 \item{Y}{the observation matrix.}
@@ -26,4 +26,24 @@ an object like that returned by synthdid_estimate
 synthdid_estimate for synthetic control estimates.
 Takes all the same parameters, but by default, passes options to use the synthetic control estimator
 By default, this uses only 'infinitesimal' ridge regularization when estimating the weights.
+}
+\examples{
+\donttest{
+# Estimate treatment effect using synthetic control method
+data(california_prop99)
+setup <- panel.matrices(california_prop99)
+
+# Synthetic control estimate
+tau.sc <- sc_estimate(setup$Y, setup$N0, setup$T0)
+print(tau.sc)
+
+# Compare with SynthDID
+tau.sdid <- synthdid_estimate(setup$Y, setup$N0, setup$T0)
+c(sc = tau.sc, sdid = tau.sdid)
+
+# With standard error
+tau.sc.se <- sc_estimate(setup$Y, setup$N0, setup$T0,
+                         estimate_se = TRUE, se_method = "placebo")
+sqrt(vcov(tau.sc.se))
+}
 }

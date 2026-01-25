@@ -31,3 +31,16 @@ Implementation of "Lindsey's method", as descrbied in Chapter 10 of
 "Computer age statistical inference: algorithms, evidence, and data science'
 by Bradley Efron and Trevor Hastie (2016).
 }
+\examples{
+\donttest{
+# Generate sample data
+x <- rnorm(1000, mean = 5, sd = 2)
+
+# Estimate density using Lindsey's method
+dens <- lindsey_density_estimate(x, K = 50, deg = 5)
+
+# Plot the result
+plot(dens$centers, dens$density, type = "l",
+     xlab = "x", ylab = "Density", main = "Lindsey Density Estimate")
+}
+}

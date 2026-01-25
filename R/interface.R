@@ -78,7 +78,7 @@ synthdid <- function(formula,
                      method = c("synthdid", "sc", "did"),
                      se = FALSE,
                      se_method = c("bootstrap", "jackknife", "placebo"),
-                     se_replications = 200,
+                     se_replications = SYNTHDID_SE_REPLICATIONS_DEFAULT,
                      ...) {
   # Capture the call
   cl <- match.call()
@@ -260,6 +260,19 @@ extract_vars_from_expr <- function(expr) {
 }
 
 
+#' Print method for synthdid objects
+#' @param x A synthdid object
+#' @param ... Additional arguments (currently ignored)
+#' @return Invisibly returns the original object
+#' @examples
+#' \donttest{
+#' data(california_prop99)
+#' result <- synthdid(PacksPerCapita ~ treated,
+#'   data = california_prop99,
+#'   index = c("State", "Year")
+#' )
+#' print(result)
+#' }
 #' @export
 print.synthdid <- function(x, ...) {
   cat("Synthetic Difference-in-Differences Estimate\n\n")
@@ -293,21 +306,87 @@ print.synthdid <- function(x, ...) {
   cat("Units:        ", N0, " control, ", N1, " treated\n", sep = "")
   cat("Time Periods: ", T0, " pre-treatment, ", T1, " post-treatment\n", sep = "")
 
+  # Show convergence status
+  conv <- attr(x, "convergence")
+  if (!is.null(conv)) {
+    cat("\nConvergence:  ")
+    if (conv$overall_converged) {
+      cat("CONVERGED\n")
+    } else {
+      cat("NOT CONVERGED - ")
+      # Show which components failed
+      failed_parts <- character()
+      if (!is.null(conv$lambda) && !conv$lambda$converged) {
+        failed_parts <- c(failed_parts, sprintf(
+          "lambda (%d/%d iters)",
+          conv$lambda$iterations,
+          conv$lambda$max_iter
+        ))
+      }
+      if (!is.null(conv$omega) && !conv$omega$converged) {
+        failed_parts <- c(failed_parts, sprintf(
+          "omega (%d/%d iters)",
+          conv$omega$iterations,
+          conv$omega$max_iter
+        ))
+      }
+      if (!is.null(conv$joint) && !conv$joint$converged) {
+        failed_parts <- c(failed_parts, sprintf(
+          "joint (%d/%d iters)",
+          conv$joint$iterations,
+          conv$joint$max_iter
+        ))
+      }
+      cat(paste(failed_parts, collapse = ", "), "\n")
+      cat("              Consider increasing max.iter. Use summary() for details.\n")
+    }
+  }
+
   invisible(x)
 }
 
 
+#' Extract coefficients from synthdid object
+#' @param object A synthdid object
+#' @param ... Additional arguments (currently ignored)
+#' @return Named numeric vector with the treatment effect estimate
+#' @examples
+#' \donttest{
+#' data(california_prop99)
+#' result <- synthdid(PacksPerCapita ~ treated,
+#'   data = california_prop99,
+#'   index = c("State", "Year")
+#' )
+#' coef(result)
+#' }
 #' @export
 coef.synthdid <- function(object, ...) {
-  setNames(as.numeric(object), "treated")
+  setNames(c(object), "treated")
 }
 
 
+#' Compute confidence intervals for synthdid object
+#' @param object A synthdid object
+#' @param level Confidence level (default: 0.95)
+#' @param ... Additional arguments (currently ignored)
+#' @return A matrix with lower and upper confidence bounds
+#' @examples
+#' \donttest{
+#' data(california_prop99)
+#' result <- synthdid(PacksPerCapita ~ treated,
+#'   data = california_prop99,
+#'   index = c("State", "Year"),
+#'   se = TRUE,
+#'   se_method = "jackknife"
+#' )
+#' confint(result)
+#' confint(result, level = 0.90)
+#' }
 #' @export
 confint.synthdid <- function(object, level = 0.95, ...) {
   tau <- coef(object)
   se <- attr(object, "se")
-  if (is.na(se)) {
+  if (is.null(se) || is.na(se)) {
     warning("Standard error not available; cannot compute confidence interval")
     return(matrix(c(NA, NA),
       nrow = 1, ncol = 2,
@@ -327,6 +406,20 @@ confint.synthdid <- function(object, level = 0.95, ...) {
 }
 
 
+#' Extract fitted values from synthdid object
+#' @param object A synthdid object
+#' @param ... Additional arguments (currently ignored)
+#' @return A matrix of fitted values for the control units
+#' @examples
+#' \donttest{
+#' data(california_prop99)
+#' result <- synthdid(PacksPerCapita ~ treated,
+#'   data = california_prop99,
+#'   index = c("State", "Year")
+#' )
+#' fitted_vals <- fitted(result)
+#' head(fitted_vals)
+#' }
 #' @export
 fitted.synthdid <- function(object, ...) {
   setup <- attr(object, "setup")
@@ -358,6 +451,22 @@ fitted.synthdid <- function(object, ...) {
 }
 
 
+#' Extract residuals from synthdid object
+#' @param object A synthdid object
+#' @param type Type of residuals: "control" (default), "pretreatment", or "all"
+#' @param ... Additional arguments (currently ignored)
+#' @return A matrix of residuals
+#' @examples
+#' \donttest{
+#' data(california_prop99)
+#' result <- synthdid(PacksPerCapita ~ treated,
+#'   data = california_prop99,
+#'   index = c("State", "Year")
+#' )
+#' resid_control <- residuals(result, type = "control")
+#' resid_pretreat <- residuals(result, type = "pretreatment")
+#' head(resid_control)
+#' }
 #' @export
 residuals.synthdid <- function(object, type = c("control", "pretreatment", "all"), ...) {
   type <- match.arg(type)
@@ -397,6 +506,26 @@ residuals.synthdid <- function(object, type = c("control", "pretreatment", "all"
 }
 
 
+#' Predictions from synthdid object
+#' @param object A synthdid object
+#' @param newdata Currently not supported (reserved for future use)
+#' @param type Type of prediction: "counterfactual" (default), "treated", or "effect"
+#' @param ... Additional arguments (currently ignored)
+#' @return A matrix or vector of predictions
+#' @examples
+#' \donttest{
+#' data(california_prop99)
+#' result <- synthdid(PacksPerCapita ~ treated,
+#'   data = california_prop99,
+#'   index = c("State", "Year")
+#' )
+#' # Counterfactual (what would have happened without treatment)
+#' pred_counterfactual <- predict(result, type = "counterfactual")
+#' # Observed treated outcomes
+#' pred_treated <- predict(result, type = "treated")
+#' # Treatment effect over time
+#' pred_effect <- predict(result, type = "effect")
+#' }
 #' @export
 predict.synthdid <- function(object,
                              newdata = NULL,
@@ -440,8 +569,23 @@ predict.synthdid <- function(object,
 #'
 #' @param object A synthdid object
 #' @param formula. An optional new formula
+#' Update a synthdid object
+#' @param object A synthdid object
+#' @param formula. An optional new formula
 #' @param method An optional new method
 #' @param ... Additional arguments
+#' @return An updated synthdid object
+#' @examples
+#' \donttest{
+#' data(california_prop99)
+#' result <- synthdid(PacksPerCapita ~ treated,
+#'   data = california_prop99,
+#'   index = c("State", "Year")
+#' )
+#' # Update to use different method
+#' result_did <- update(result, method = "did")
+#' c(sdid = coef(result), did = coef(result_did))
+#' }
 #' @export
 update.synthdid <- function(object, formula. = NULL, method = NULL, ...) {
   call <- attr(object, "call")
@@ -467,8 +611,19 @@ update.synthdid <- function(object, formula. = NULL, method = NULL, ...) {
 
 #' Model frame for synthdid
 #'
+#' Extract model frame from synthdid object
 #' @param formula A synthdid object
-#' @param ... Additional arguments
+#' @param ... Additional arguments (currently ignored)
+#' @return A list with call and terms information
+#' @examples
+#' \donttest{
+#' data(california_prop99)
+#' result <- synthdid(PacksPerCapita ~ treated,
+#'   data = california_prop99,
+#'   index = c("State", "Year")
+#' )
+#' model.frame(result)
+#' }
 #' @export
 model.frame.synthdid <- function(formula, ...) {
   # For now, return NULL or minimal info

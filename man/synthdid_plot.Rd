@@ -18,21 +18,21 @@ synthdid_plot(
   facet.vertical = TRUE,
   lambda.comparable = !is.null(facet),
   overlay = 0,
-  lambda.plot.scale = 3,
+  lambda.plot.scale = SYNTHDID_LAMBDA_PLOT_SCALE_DEFAULT,
   trajectory.linetype = 1,
-  effect.curvature = 0.3,
-  line.width = 0.5,
+  effect.curvature = SYNTHDID_EFFECT_CURVATURE_DEFAULT,
+  line.width = SYNTHDID_LINE_WIDTH_DEFAULT,
   guide.linetype = 2,
-  point.size = 1,
-  trajectory.alpha = 0.5,
-  diagram.alpha = 0.95,
-  effect.alpha = 0.95,
-  onset.alpha = 0.3,
-  ci.alpha = 0.3,
-  spaghetti.line.width = 0.2,
-  spaghetti.label.size = 2,
-  spaghetti.line.alpha = 0.3,
-  spaghetti.label.alpha = 0.5,
+  point.size = SYNTHDID_POINT_SIZE_DEFAULT,
+  trajectory.alpha = SYNTHDID_TRAJECTORY_ALPHA_DEFAULT,
+  diagram.alpha = SYNTHDID_DIAGRAM_ALPHA_DEFAULT,
+  effect.alpha = SYNTHDID_EFFECT_ALPHA_DEFAULT,
+  onset.alpha = SYNTHDID_ONSET_ALPHA_DEFAULT,
+  ci.alpha = SYNTHDID_CI_ALPHA_DEFAULT,
+  spaghetti.line.width = SYNTHDID_SPAGHETTI_LINE_WIDTH_DEFAULT,
+  spaghetti.label.size = SYNTHDID_SPAGHETTI_LABEL_SIZE_DEFAULT,
+  spaghetti.line.alpha = SYNTHDID_SPAGHETTI_LINE_ALPHA_DEFAULT,
+  spaghetti.label.alpha = SYNTHDID_SPAGHETTI_LABEL_ALPHA_DEFAULT,
   se.method = "jackknife",
   alpha.multiplier = NULL
 )
@@ -105,10 +105,39 @@ Nonzero values help avoid overplotting when plotting multiple estimates in one f
 one facet but highlighting one or several. All plot elements associated with the estimate are displayed
 with alpha multiplied by the corresponding element of alpha.multiplier. Defaults to a vector of ones.}
 }
+\value{
+A ggplot2 object that can be further customized or displayed.
+}
 \description{
 For SC estimates, i.e., if lambda is a vector of zeros, plots the trajectories and SC estimate of the effect, but no diagram.
 }
 \details{
 Requires ggplot2
 Due to differences between ggplot and ggplotly, this will warn about an unknown aesthetic frame.
+}
+\examples{
+\donttest{
+# Basic plot of a single estimate
+data(california_prop99)
+setup <- panel.matrices(california_prop99)
+tau.hat <- synthdid_estimate(setup$Y, setup$N0, setup$T0)
+synthdid_plot(tau.hat)
+
+# Compare multiple estimators
+tau.sc <- sc_estimate(setup$Y, setup$N0, setup$T0)
+tau.did <- did_estimate(setup$Y, setup$N0, setup$T0)
+synthdid_plot(list(tau.did, tau.sc, tau.hat),
+              facet = c("DID", "SC", "Synthetic DID"))
+
+# Overlay estimates in the same facet
+synthdid_plot(list(tau.sc, tau.hat),
+              facet = c("Comparison", "Comparison"))
+
+# Show specific units as spaghetti plots
+# synthdid_plot(tau.hat, spaghetti.units = rownames(setup$Y)[1:5])
+
+# Customize the plot
+p <- synthdid_plot(tau.hat, trajectory.alpha = 0.7)
+p + ggplot2::ggtitle("California Proposition 99 Analysis")
+}
 }

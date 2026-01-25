@@ -11,8 +11,19 @@ synthdid_rmse_plot(estimates)
 \arguments{
 \item{estimates, }{a list of estimates output by synthdid_estimate. Or a single estimate.}
 }
+\value{
+A ggplot2 object showing the convergence diagnostics.
+}
 \description{
 A diagnostic plot for sc.weight.fw.covariates. Plots the objective function, regularized RMSE,
 as a function of the number of Frank-Wolfe / Gradient steps taken.
 Requires ggplot2
+}
+\examples{
+\donttest{
+data(california_prop99)
+setup <- panel.matrices(california_prop99)
+tau.hat <- synthdid_estimate(setup$Y, setup$N0, setup$T0)
+synthdid_rmse_plot(tau.hat)
+}
 }

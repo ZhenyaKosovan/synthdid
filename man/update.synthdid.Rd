@@ -15,6 +15,21 @@
 
 \item{...}{Additional arguments}
 }
+\value{
+An updated synthdid object
+}
 \description{
 Update and re-fit a synthdid model with different options
+}
+\examples{
+\donttest{
+data(california_prop99)
+result <- synthdid(PacksPerCapita ~ treated,
+  data = california_prop99,
+  index = c("State", "Year")
+)
+# Update to use different method
+result_did <- update(result, method = "did")
+c(sdid = coef(result), did = coef(result_did))
+}
 }
