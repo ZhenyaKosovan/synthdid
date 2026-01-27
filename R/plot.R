@@ -364,7 +364,7 @@ synthdid_plot <- function(estimates, treated.name = "treated", control.name = "s
   }
 
   # facet if we want multiple facets
-  if (!all(conc$lines$facet == conc$lines$facet[1])) {
+  if (!isTRUE(all(conc$lines$facet == conc$lines$facet[1]))) {
     if (facet.vertical) {
       p <- p + facet_grid(facet ~ ., scales = "free_y")
     } else {

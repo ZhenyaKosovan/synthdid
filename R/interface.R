@@ -189,7 +189,6 @@ synthdid <- function(formula,
 
   # Update class
   class(estimate) <- c("synthdid", class(estimate))
-
   return(estimate)
 }
 

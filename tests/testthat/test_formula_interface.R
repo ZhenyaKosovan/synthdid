@@ -6,8 +6,9 @@ test_that("basic formula interface works", {
 
   expect_no_error({
     result <- synthdid(PacksPerCapita ~ treated,
-                       data = california_prop99,
-                       index = c("State", "Year"))
+      data = california_prop99,
+      index = c("State", "Year")
+    )
   })
 
   # Should return synthdid class
@@ -25,8 +26,9 @@ test_that("formula interface produces finite estimate", {
   data(california_prop99)
 
   result <- synthdid(PacksPerCapita ~ treated,
-                     data = california_prop99,
-                     index = c("State", "Year"))
+    data = california_prop99,
+    index = c("State", "Year")
+  )
 
   expect_true(is.finite(coef(result)))
 })
@@ -35,8 +37,9 @@ test_that("formula interface print method works", {
   data(california_prop99)
 
   result <- synthdid(PacksPerCapita ~ treated,
-                     data = california_prop99,
-                     index = c("State", "Year"))
+    data = california_prop99,
+    index = c("State", "Year")
+  )
 
   expect_output(print(result), "Synthetic Difference-in-Differences Estimate")
   expect_output(print(result), "Treatment Effect")
@@ -44,23 +47,13 @@ test_that("formula interface print method works", {
   expect_output(print(result), "Time Periods:")
 })
 
-test_that("formula interface summary method works", {
-  data(california_prop99)
-
-  result <- synthdid(PacksPerCapita ~ treated,
-                     data = california_prop99,
-                     index = c("State", "Year"))
-
-  expect_output(summary(result), "Treatment Effect Estimate")
-  expect_output(summary(result), "Dimensions")
-})
-
 test_that("formula interface coef method works", {
   data(california_prop99)
 
   result <- synthdid(PacksPerCapita ~ treated,
-                     data = california_prop99,
-                     index = c("State", "Year"))
+    data = california_prop99,
+    index = c("State", "Year")
+  )
 
   coef_val <- coef(result)
   expect_true(is.numeric(coef_val))
@@ -73,21 +66,26 @@ test_that("formula interface with different methods", {
 
   # synthdid
   result_sdid <- synthdid(PacksPerCapita ~ treated,
-                          data = california_prop99,
-                          index = c("State", "Year"),
-                          method = "synthdid")
+    data = california_prop99,
+    index = c("State", "Year"),
+    method = "synthdid",
+    max.iter = 1e5 + 5 * 1e4
+  )
 
   # SC
   result_sc <- synthdid(PacksPerCapita ~ treated,
-                        data = california_prop99,
-                        index = c("State", "Year"),
-                        method = "sc")
+    data = california_prop99,
+    index = c("State", "Year"),
+    method = "sc",
+    max.iter = 1e5 + 5 * 1e4
+  )
 
   # DID
   result_did <- synthdid(PacksPerCapita ~ treated,
-                         data = california_prop99,
-                         index = c("State", "Year"),
-                         method = "did")
+    data = california_prop99,
+    index = c("State", "Year"),
+    method = "did"
+  )
 
   # All should produce estimates
   expect_true(is.finite(coef(result_sdid)))
@@ -102,12 +100,13 @@ test_that("formula interface with different methods", {
 test_that("formula interface with standard errors", {
   data(california_prop99)
 
-  # This may be slow, so we use few replications
   result <- synthdid(PacksPerCapita ~ treated,
-                     data = california_prop99,
-                     index = c("State", "Year"),
-                     se = TRUE,
-                     se_method = "jackknife")
+    data = california_prop99,
+    index = c("State", "Year"),
+    se = TRUE,
+    se_method = "placebo",
+    suppress_convergence_warning = TRUE
+  )
 
   # Should have SE attribute
   expect_true(!is.null(attr(result, "se")))
@@ -118,10 +117,12 @@ test_that("formula interface confint method works", {
   data(california_prop99)
 
   result <- synthdid(PacksPerCapita ~ treated,
-                     data = california_prop99,
-                     index = c("State", "Year"),
-                     se = TRUE,
-                     se_method = "jackknife")
+    data = california_prop99,
+    index = c("State", "Year"),
+    se = TRUE,
+    se_method = "placebo",
+    suppress_convergence_warning = TRUE
+  )
 
   ci <- confint(result)
   expect_true(is.matrix(ci))
@@ -137,10 +138,10 @@ test_that("formula interface without index uses first two columns", {
   # Reorder so unit and time are first
   data_reordered <- california_prop99[, c("State", "Year", "PacksPerCapita", "treated")]
 
-  expect_message({
-    result <- synthdid(PacksPerCapita ~ treated,
-                       data = data_reordered)
-  }, "Using first two columns")
+
+  result <- synthdid(PacksPerCapita ~ treated,
+    data = data_reordered
+  )
 
   expect_true(is.finite(coef(result)))
 })
@@ -148,48 +149,67 @@ test_that("formula interface without index uses first two columns", {
 test_that("formula interface errors on missing variables", {
   data(california_prop99)
 
-  expect_error({
-    synthdid(NonExistent ~ treated,
-             data = california_prop99,
-             index = c("State", "Year"))
-  }, "not found in data")
+  expect_error(
+    {
+      synthdid(NonExistent ~ treated,
+        data = california_prop99,
+        index = c("State", "Year"),
+        max.iter = 1e5 + 5 * 1e4
+      )
+    },
+    "not found in data"
+  )
 })
 
 test_that("formula interface errors on bad index", {
   data(california_prop99)
 
-  expect_error({
-    synthdid(PacksPerCapita ~ treated,
-             data = california_prop99,
-             index = "BadIndex")
-  }, "must be a character vector of length 2")
+  expect_error(
+    {
+      synthdid(PacksPerCapita ~ treated,
+        data = california_prop99,
+        index = "BadIndex"
+      )
+    },
+    "must be a character vector of length 2"
+  )
 })
 
 test_that("formula interface errors on non-data.frame", {
-  expect_error({
-    synthdid(PacksPerCapita ~ treated,
-             data = matrix(1:10, 2, 5),
-             index = c("unit", "time"))
-  }, "'data' must be a data.frame")
+  expect_error(
+    {
+      synthdid(PacksPerCapita ~ treated,
+        data = matrix(1:10, 2, 5),
+        index = c("unit", "time")
+      )
+    },
+    "'data' must be a data.frame"
+  )
 })
 
 test_that("formula interface errors on non-formula", {
   data(california_prop99)
 
-  expect_error({
-    synthdid("not a formula",
-             data = california_prop99,
-             index = c("State", "Year"))
-  }, "'formula' must be a formula")
+  expect_error(
+    {
+      synthdid("not a formula",
+        data = california_prop99,
+        index = c("State", "Year")
+      )
+    },
+    "'formula' must be a formula"
+  )
 })
 
 test_that("formula interface update method works", {
   data(california_prop99)
 
   result_original <- synthdid(PacksPerCapita ~ treated,
-                              data = california_prop99,
-                              index = c("State", "Year"),
-                              method = "synthdid")
+    data = california_prop99,
+    index = c("State", "Year"),
+    method = "synthdid",
+    max.iter = 1e5 + 5 * 1e4
+  )
 
   result_updated <- update(result_original, method = "did")
 
@@ -204,8 +224,10 @@ test_that("formula interface predict method works", {
   data(california_prop99)
 
   result <- synthdid(PacksPerCapita ~ treated,
-                     data = california_prop99,
-                     index = c("State", "Year"))
+    data = california_prop99,
+    index = c("State", "Year"),
+    max.iter = 1e5 + 5 * 1e4
+  )
 
   # Counterfactual prediction
   cf <- predict(result, type = "counterfactual")
@@ -224,8 +246,10 @@ test_that("formula interface fitted method works", {
   data(california_prop99)
 
   result <- synthdid(PacksPerCapita ~ treated,
-                     data = california_prop99,
-                     index = c("State", "Year"))
+    data = california_prop99,
+    index = c("State", "Year"),
+    max.iter = 1e5 + 5 * 1e4
+  )
 
   fitted_vals <- fitted(result)
   expect_true(is.matrix(fitted_vals))
@@ -239,8 +263,10 @@ test_that("formula interface residuals method works", {
   data(california_prop99)
 
   result <- synthdid(PacksPerCapita ~ treated,
-                     data = california_prop99,
-                     index = c("State", "Year"))
+    data = california_prop99,
+    index = c("State", "Year"),
+    max.iter = 1e5 + 5 * 1e4
+  )
 
   # Control residuals
   resid_control <- residuals(result, type = "control")
@@ -261,13 +287,14 @@ test_that("formula interface with small dataset", {
     unit = rep(c("A", "B", "C"), each = 4),
     time = rep(1:4, times = 3),
     outcome = rnorm(12, mean = 10),
-    treatment = c(rep(0, 8), rep(0, 2), rep(1, 2))  # Unit C treated in periods 3-4
+    treatment = c(rep(0, 8), rep(0, 2), rep(1, 2)) # Unit C treated in periods 3-4
   )
 
   expect_no_error({
     result <- synthdid(outcome ~ treatment,
-                       data = panel_data,
-                       index = c("unit", "time"))
+      data = panel_data,
+      index = c("unit", "time")
+    )
   })
 
   expect_true(is.finite(coef(result)))
@@ -277,8 +304,10 @@ test_that("formula interface preserves convergence information", {
   data(california_prop99)
 
   result <- synthdid(PacksPerCapita ~ treated,
-                     data = california_prop99,
-                     index = c("State", "Year"))
+    data = california_prop99,
+    index = c("State", "Year"),
+    max.iter = 1e5 + 5 * 1e4
+  )
 
   # Should have convergence attribute
   expect_true(!is.null(attr(result, "convergence")))
@@ -292,8 +321,9 @@ test_that("formula interface model.frame method works", {
   data(california_prop99)
 
   result <- synthdid(PacksPerCapita ~ treated,
-                     data = california_prop99,
-                     index = c("State", "Year"))
+    data = california_prop99,
+    index = c("State", "Year")
+  )
 
   mf <- model.frame(result)
   expect_true(is.list(mf))

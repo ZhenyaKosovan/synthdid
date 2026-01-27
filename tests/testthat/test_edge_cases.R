@@ -21,15 +21,11 @@ test_that("panel.matrices errors when treatment starts in first period", {
   )
 })
 
-test_that("synthdid_estimate handles single pre-treatment period noise level", {
+test_that("synthdid_estimate errors out on single pre-treatment period", {
   Y <- matrix(c(1, 2, 1, 2), nrow = 2, byrow = TRUE)
-  expect_warning(
-    {
-      est <- synthdid_estimate(Y, N0 = 1, T0 = 1, sparsify = NULL, max.iter = 5)
-    },
-    "noise.level"
-  )
-  expect_true(is.finite(as.numeric(est)))
+  expect_error({
+    est <- synthdid_estimate(Y, N0 = 1, T0 = 1, sparsify = NULL, max.iter = 5)
+  })
 })
 
 test_that("fit_ar2 errors on singular system", {

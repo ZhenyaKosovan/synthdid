@@ -35,6 +35,8 @@ sparsify_function <- function(v) {
 #' @param estimate_se Logical. If TRUE, attempt to compute a standard error for the estimate (stored as an attribute).
 #' @param se_method Standard-error method to use when estimate_se = TRUE; one of "bootstrap", "jackknife", or "placebo".
 #' @param se_replications Number of replications when using bootstrap or placebo standard errors.
+#' @param suppress_convergence_warning Logical. If FALSE raise the warning flag for
+#' parameters that did not converge.
 #' @return An average treatment effect estimate with 'weights' and 'setup' attached as attributes.
 #'   'weights' contains the estimated weights lambda and omega and corresponding intercepts, as well as regression coefficients beta if X is passed.
 #'   'setup' is a list describing the problem passed in: Y, N0, T0, X.
@@ -83,7 +85,8 @@ synthdid_estimate <- function(Y, N0, T0, X = array(dim = c(dim(Y), 0)),
                               max.iter.pre.sparsify = SYNTHDID_MAX_ITER_PRE_SPARSIFY,
                               estimate_se = FALSE,
                               se_method = c("bootstrap", "jackknife", "placebo"),
-                              se_replications = SYNTHDID_SE_REPLICATIONS_DEFAULT) {
+                              se_replications = SYNTHDID_SE_REPLICATIONS_DEFAULT,
+                              suppress_convergence_warning = TRUE) {
   if (any(is.na(Y))) {
     stop("Missing values in input data.")
   }
@@ -251,7 +254,8 @@ synthdid_estimate <- function(Y, N0, T0, X = array(dim = c(dim(Y), 0)),
     zeta.omega = zeta.omega, zeta.lambda = zeta.lambda,
     omega.intercept = omega.intercept, lambda.intercept = lambda.intercept,
     update.omega = update.omega, update.lambda = update.lambda,
-    min.decrease = min.decrease, max.iter = max.iter
+    min.decrease = min.decrease, max.iter = max.iter,
+    suppress_convergence_warning = suppress_convergence_warning
   )
 
   # Attach convergence information (zero overhead, just metadata)
@@ -283,7 +287,7 @@ synthdid_estimate <- function(Y, N0, T0, X = array(dim = c(dim(Y), 0)),
       ))
     }
 
-    if (length(warning_parts) > 0) {
+    if (length(warning_parts) > 0 && !suppress_convergence_warning) {
       warning(sprintf(
         "synthdid optimization did not converge: %s\nConsider increasing max.iter or relaxing min.decrease threshold.",
         paste(warning_parts, collapse = ", ")
@@ -369,7 +373,7 @@ sc_estimate <- function(Y, N0, T0, eta.omega = SYNTHDID_ETA_OMEGA_SC_DEFAULT, ..
     eta.omega = eta.omega,
     weights = list(lambda = rep(0, T0)), omega.intercept = FALSE, ...
   )
-  attr(estimate, "estimator") <- "sc_estimate"
+  attr(estimate, "estimator") <- "sc"
   estimate
 }
 
@@ -402,7 +406,7 @@ sc_estimate <- function(Y, N0, T0, eta.omega = SYNTHDID_ETA_OMEGA_SC_DEFAULT, ..
 #' @export did_estimate
 did_estimate <- function(Y, N0, T0, ...) {
   estimate <- synthdid_estimate(Y, N0, T0, weights = list(lambda = rep(1 / T0, T0), omega = rep(1 / N0, N0)), ...)
-  attr(estimate, "estimator") <- "did_estimate"
+  attr(estimate, "estimator") <- "did"
   estimate
 }
 

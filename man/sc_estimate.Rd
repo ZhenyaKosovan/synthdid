@@ -43,7 +43,8 @@ c(sc = tau.sc, sdid = tau.sdid)
 
 # With standard error
 tau.sc.se <- sc_estimate(setup$Y, setup$N0, setup$T0,
-                         estimate_se = TRUE, se_method = "placebo")
+  estimate_se = TRUE, se_method = "placebo"
+)
 sqrt(vcov(tau.sc.se))
 }
 }

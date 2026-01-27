@@ -26,6 +26,6 @@ tau.hat <- synthdid_estimate(data$Y, data$N0, data$T0)
 print(tau.hat)
 
 # True treatment effect is 1
-tau.hat  # Should be close to 1
+tau.hat # Should be close to 1
 }
 }

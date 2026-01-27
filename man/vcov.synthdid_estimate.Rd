@@ -58,7 +58,8 @@ c(bootstrap = se.bootstrap, jackknife = se.jackknife, placebo = se.placebo)
 
 # Or compute SE at estimation time
 tau.hat.se <- synthdid_estimate(setup$Y, setup$N0, setup$T0,
-                                 estimate_se = TRUE, se_method = "jackknife")
+  estimate_se = TRUE, se_method = "jackknife"
+)
 # Reuses cached SE without recomputation
 se.cached <- sqrt(vcov(tau.hat.se, method = "jackknife"))
 }

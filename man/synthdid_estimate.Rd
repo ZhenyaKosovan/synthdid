@@ -25,7 +25,8 @@ synthdid_estimate(
   max.iter.pre.sparsify = SYNTHDID_MAX_ITER_PRE_SPARSIFY,
   estimate_se = FALSE,
   se_method = c("bootstrap", "jackknife", "placebo"),
-  se_replications = SYNTHDID_SE_REPLICATIONS_DEFAULT
+  se_replications = SYNTHDID_SE_REPLICATIONS_DEFAULT,
+  suppress_convergence_warning = TRUE
 )
 }
 \arguments{
@@ -75,6 +76,9 @@ Not used if sparsify = NULL.}
 \item{se_method}{Standard-error method to use when estimate_se = TRUE; one of "bootstrap", "jackknife", or "placebo".}
 
 \item{se_replications}{Number of replications when using bootstrap or placebo standard errors.}
+
+\item{suppress_convergence_warning}{Logical. If FALSE raise the warning flag for
+parameters that did not converge.}
 }
 \value{
 An average treatment effect estimate with 'weights' and 'setup' attached as attributes.
@@ -97,7 +101,8 @@ print(tau.hat)
 
 # With standard error computation
 tau.hat.se <- synthdid_estimate(setup$Y, setup$N0, setup$T0,
-                                 estimate_se = TRUE, se_method = "jackknife")
+  estimate_se = TRUE, se_method = "jackknife"
+)
 sqrt(vcov(tau.hat.se))
 
 # Using covariates (if available)
@@ -111,6 +116,7 @@ synthdid_converged(tau.hat)
 
 # Using custom regularization
 tau.hat.custom <- synthdid_estimate(setup$Y, setup$N0, setup$T0,
-                                     eta.omega = 0.5, eta.lambda = 1e-3)
+  eta.omega = 0.5, eta.lambda = 1e-3
+)
 }
 }

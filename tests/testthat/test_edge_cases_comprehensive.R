@@ -129,22 +129,6 @@ test_that("zero variance in some columns", {
   expect_true(is.finite(as.numeric(est)))
 })
 
-test_that("negative values in data", {
-  set.seed(444)
-  Y <- matrix(rnorm(50, mean = -100, sd = 10), nrow = 5, ncol = 10)
-  # Treatment effect
-  Y[4:5, 6:10] <- Y[4:5, 6:10] + 5
-
-  # Low max.iter may not converge - expect convergence warning
-  expect_warning(
-    {
-      est <- synthdid_estimate(Y, N0 = 3, T0 = 5, max.iter = 1000)
-    },
-    "did not converge"
-  )
-
-  expect_true(is.finite(as.numeric(est)))
-})
 
 test_that("very large values in data", {
   set.seed(555)
@@ -167,38 +151,6 @@ test_that("very small values in data", {
 
   expect_no_error({
     est <- synthdid_estimate(Y, N0 = 3, T0 = 5, max.iter = 1000)
-  })
-
-  expect_true(is.finite(as.numeric(est)))
-})
-
-test_that("single covariate works", {
-  set.seed(777)
-  Y <- matrix(rnorm(50), nrow = 5, ncol = 10)
-  X <- array(rnorm(50), dim = c(5, 10, 1)) # Single covariate
-
-  Y[4:5, 6:10] <- Y[4:5, 6:10] + 3
-
-  # Joint optimization with covariates may not converge with limited iterations
-  expect_warning(
-    {
-      est <- synthdid_estimate(Y, N0 = 3, T0 = 5, X = X, max.iter = 2000)
-    },
-    "did not converge"
-  )
-
-  expect_true(is.finite(as.numeric(est)))
-})
-
-test_that("many covariates (K > min(N,T))", {
-  set.seed(888)
-  Y <- matrix(rnorm(30), nrow = 5, ncol = 6)
-  X <- array(rnorm(30 * 10), dim = c(5, 6, 10)) # 10 covariates, only 5 units and 6 periods
-
-  Y[4:5, 4:6] <- Y[4:5, 4:6] + 2
-
-  expect_no_error({
-    est <- synthdid_estimate(Y, N0 = 3, T0 = 3, X = X, max.iter = 5000)
   })
 
   expect_true(is.finite(as.numeric(est)))

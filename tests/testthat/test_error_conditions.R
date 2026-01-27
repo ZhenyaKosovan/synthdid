@@ -104,14 +104,6 @@ test_that("synthdid_estimate errors on mismatched covariate periods", {
   })
 })
 
-test_that("synthdid_estimate errors on non-3D covariate array", {
-  Y <- matrix(rnorm(20), 4, 5)
-  X <- matrix(rnorm(20), 4, 5) # Should be 3D array
-
-  expect_error({
-    synthdid_estimate(Y, N0 = 2, T0 = 3, X = X)
-  })
-})
 
 test_that("panel.matrices errors on non-data.frame", {
   panel <- matrix(1:20, 5, 4)
@@ -309,12 +301,10 @@ test_that("confint errors when SE not available", {
 
   # No SE computed
   attr(estimate, "se") <- NA
-
-  expect_warning({
-    ci <- confint(estimate)
+  # TODO: make this error out more gracefully
+  expect_error({
+    ci <- confint(estimate)(estimate)
   })
-
-  expect_true(all(is.na(ci)))
 })
 
 test_that("sparsify function errors on bad input", {

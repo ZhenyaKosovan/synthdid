@@ -50,7 +50,7 @@ synthdid_controls <- function(estimates, sort.by = 1,
   } else {
     colnames(Y)[o]
   }
-  colnames(tab) <- "Weight"
+  colnames(tab) <- if (length(estimates) == 1) "Weight" else names(estimates)
   # truncate table to retain a weight sum of at least mass for each unit
   tab.len <- max(apply(tab, 2, function(col) {
     Position(function(x) {

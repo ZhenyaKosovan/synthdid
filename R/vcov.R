@@ -39,7 +39,8 @@
 #'
 #' # Or compute SE at estimation time
 #' tau.hat.se <- synthdid_estimate(setup$Y, setup$N0, setup$T0,
-#'                                  estimate_se = TRUE, se_method = "jackknife")
+#'   estimate_se = TRUE, se_method = "jackknife"
+#' )
 #' # Reuses cached SE without recomputation
 #' se.cached <- sqrt(vcov(tau.hat.se, method = "jackknife"))
 #' }
@@ -100,7 +101,6 @@ synthdid_se <- function(...) {
 #'
 #' @param estimate A \code{synthdid_estimate} object.
 #' @param replications Number of bootstrap replications.
-#'
 #' @return Scalar bootstrap standard error.
 #' @keywords internal
 bootstrap_se <- function(estimate, replications) {
@@ -139,7 +139,8 @@ bootstrap_se <- function(estimate, replications) {
             update.omega = opts$update.omega,
             update.lambda = opts$update.lambda,
             min.decrease = opts$min.decrease,
-            max.iter = opts$max.iter
+            max.iter = opts$max.iter,
+            suppress_convergence_warning = opts$suppress_convergence_warning
           )))
         }
       },
@@ -158,8 +159,7 @@ bootstrap_se <- function(estimate, replications) {
 #'
 #' @param estimate A \code{synthdid_estimate} object.
 #' @param weights Optional weight list; if provided, updates are suppressed to
-#'   emulate the fixed-weight jackknife.
-#'
+#'   emulate the fixed-weight jackknife.show_convergence_warning
 #' @return Scalar jackknife standard error, or \code{NA} when not applicable.
 #' @keywords internal
 jackknife_se <- function(estimate, weights = attr(estimate, "weights")) {
@@ -195,7 +195,8 @@ jackknife_se <- function(estimate, weights = attr(estimate, "weights")) {
           update.omega = opts$update.omega,
           update.lambda = opts$update.lambda,
           min.decrease = opts$min.decrease,
-          max.iter = opts$max.iter
+          max.iter = opts$max.iter,
+          suppress_convergence_warning = opts$suppress_convergence_warning
         ))
       },
       .options = furrr::furrr_options(seed = TRUE)
@@ -249,7 +250,8 @@ placebo_se <- function(estimate, replications) {
           update.omega = opts$update.omega,
           update.lambda = opts$update.lambda,
           min.decrease = opts$min.decrease,
-          max.iter = opts$max.iter
+          max.iter = opts$max.iter,
+          suppress_convergence_warning = opts$suppress_convergence_warning
         ))
       },
       .options = furrr::furrr_options(seed = TRUE)

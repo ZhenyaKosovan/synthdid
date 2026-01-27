@@ -10,7 +10,7 @@ jackknife_se(estimate, weights = attr(estimate, "weights"))
 \item{estimate}{A \code{synthdid_estimate} object.}
 
 \item{weights}{Optional weight list; if provided, updates are suppressed to
-emulate the fixed-weight jackknife.}
+emulate the fixed-weight jackknife.show_convergence_warning}
 }
 \value{
 Scalar jackknife standard error, or \code{NA} when not applicable.
