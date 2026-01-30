@@ -1,6 +1,16 @@
-# Linux/Unix-specific Makevars
-# Uses standard BLAS/LAPACK (typically Fortran-compiled)
-# Requires FLIBS for Fortran runtime libraries
+UNAME_S := $(shell uname -s)
+OPENMP_CXXFLAGS := $(SHLIB_OPENMP_CXXFLAGS)
 
-PKG_CXXFLAGS = $(SHLIB_OPENMP_CXXFLAGS)
-PKG_LIBS = $(SHLIB_OPENMP_CXXFLAGS) $(LAPACK_LIBS) $(BLAS_LIBS) $(FLIBS)
+ifneq ($(strip $(OPENMP_CXXFLAGS)),)
+  OPENMP_FLAG := $(SHLIB_OPENMP_CXXFLAGS)
+else
+  OPENMP_FLAG :=
+endif
+
+PKG_CXXFLAGS = $(OPENMP_FLAG)
+
+ifeq ($(UNAME_S),Darwin)
+  PKG_LIBS = $(OPENMP_FLAG) $(LAPACK_LIBS) $(BLAS_LIBS)
+else
+  PKG_LIBS = $(OPENMP_FLAG) $(LAPACK_LIBS) $(BLAS_LIBS) $(FLIBS)
+endif
