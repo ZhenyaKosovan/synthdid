@@ -1,0 +1,1048 @@
+---
+title: "Alternative Visualization for Synthetic Diff-in-Diff"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Alternative Visualization for Synthetic Diff-in-Diff}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, message=FALSE, warning=FALSE}
+Sys.setenv(TZ = "UTC")
+
+library(synthdid)
+library(dplyr)
+library(tidyr)
+library(ggplot2)
+library(patchwork)
+library(scales)
+
+set.seed(42)
+
+# Colorblind-safe palette (Okabe-Ito)
+cb_palette <- c(
+  "treated" = "#0072B2",
+  "control" = "#E69F00",
+  "synthetic" = "#D55E00",
+  "pre" = "#56B4E9",
+  "post" = "#0072B2",
+  "placebo" = "#CC79A7"
+)
+
+# Shared estimation settings
+sdid_min_decrease <- 1e-2
+sdid_max_iter <- 5000
+sdid_se_replications <- 50
+
+# Shared ggplot theme
+theme_sdid <- function() {
+  theme_minimal(base_size = 13) +
+    theme(
+      plot.title = element_text(face = "bold", size = 14),
+      plot.subtitle = element_text(color = "#666666", size = 11),
+      panel.grid.minor = element_blank(),
+      legend.position = "top",
+      legend.title = element_blank()
+    )
+}
+
+# ---------------------------------------------------------------------------
+# Helpers to extract model summaries without touching internals directly
+# ---------------------------------------------------------------------------
+
+#' Extract treated & synthetic trajectories from a fitted model
+extract_trajectories <- function(model) {
+  treated_mat <- predict(model, type = "treated")
+  cf_mat <- predict(model, type = "counterfactual")
+  tibble(
+    date = as.Date(colnames(treated_mat)),
+    treated = colMeans(treated_mat),
+    synthetic = colMeans(cf_mat),
+    gap = colMeans(treated_mat) - colMeans(cf_mat)
+  )
+}
+
+#' Return unit (omega) weights as a tidy tibble
+get_unit_weights <- function(model) {
+  w <- attr(model, "weights")$omega
+  nms <- rownames(attr(model, "setup")$Y)[seq_along(w)]
+  tibble(unit = nms, weight = as.vector(w)) %>%
+    arrange(desc(weight)) %>%
+    mutate(rank = row_number(), cumulative = cumsum(weight))
+}
+
+#' Return time (lambda) weights as a tidy tibble
+get_time_weights <- function(model) {
+  w <- attr(model, "weights")$lambda
+  nms <- colnames(attr(model, "setup")$Y)[seq_along(w)]
+  tibble(date = as.Date(nms), weight = as.vector(w))
+}
+```
+
+```{r, echo=FALSE}
+ragg_png = function(..., res = 192) {
+  ragg::agg_png(..., res = res, units = "in")
+}
+knitr::opts_chunk$set(dev = "ragg_png", fig.ext = "png",
+                      fig.width = 10, fig.height = 6,
+                      warning = FALSE, message = FALSE)
+```
+
+**Executive Takeaways:**
+
+- **Effect size**: Treatment increases merchant spending by approximately 15% (simulated true effect)
+- **Robustness**: Pre-treatment fit is strong (MAPE < 5%) with parallel pre-trends
+- **Method agreement**: SDID, SC, and DiD estimates are consistent, supporting causal interpretation
+
+*Note: This analysis uses simulated data for demonstration purposes.*
+
+## Data Generation
+
+This analysis uses **simulated panel data** to demonstrate SDID methodology. The data-generating process includes: (1) merchant-specific baseline sizes drawn from log-normal distributions, (2) common time effects with seasonality, (3) merchant-specific trends, and (4) a 15% treatment effect that ramps up over the post-period. This creates realistic patterns while allowing us to verify the estimator recovers the true effect.
+
+| Parameter | Value | Description |
+|-----------|-------|-------------|
+| N (control) | 500 | Control merchants |
+| N (treated) | 50 | Treated merchants |
+| T (pre) | 30 | Pre-treatment months |
+| T (post) | 10 | Post-treatment months |
+| True effect | 15% | Treatment effect size |
+
+```{r generate-data}
+n_control <- 500
+n_treated <- 50
+n_pre <- 30
+n_post <- 10
+true_effect <- 0.15
+
+dates <- seq(as.Date("2022-01-01"), by = "month", length.out = n_pre + n_post)
+treatment_date <- dates[n_pre + 1]
+
+# Merchant-level parameters
+merchant_params <- tibble(
+  merchant = c(paste0("Control_", sprintf("%03d", 1:n_control)),
+               paste0("Treated_", sprintf("%02d", 1:n_treated))),
+  group = rep(c("Control", "Treated"), c(n_control, n_treated)),
+  size  = c(rnorm(n_control, 0, 1), rnorm(n_treated, 0.3, 1)),
+  trend = c(rnorm(n_control, 0, 0.02), rnorm(n_treated, 0.01, 0.02))
+)
+
+# Common time effects (shared across all merchants)
+time_effects_raw <- cumsum(c(0, rnorm(length(dates) - 1, mean = 0.005, sd = 0.03)))
+seasonality <- 0.1 * sin(2 * pi * seq_along(dates) / 12)
+
+time_params <- tibble(
+  date = dates,
+  t_idx = seq_along(dates),
+  common_effect = time_effects_raw + seasonality
+)
+
+# Expand into full panel, compute spend
+panel_df <- crossing(merchant_params, time_params) %>%
+  mutate(
+    # Binary treatment indicator (0/1)
+    treated = as.integer(group == "Treated" & date >= treatment_date),
+    # Treatment effect ramp: 0 in pre-period, 0.3 -> 1.0 across post-period
+    post_idx = pmax(0L, t_idx - n_pre),
+    ramp = ifelse(post_idx > 0 & group == "Treated",
+                  0.3 + 0.7 * (post_idx - 1) / max(n_post - 1, 1), 0),
+    spend = 100 * exp(size) *
+      exp(common_effect + trend * t_idx + rnorm(n(), sd = 0.05)) *
+      (1 + true_effect * ramp)
+  ) %>%
+  select(merchant, date, group, spend, treated)
+
+panel_df
+```
+
+## 1. Spending Distribution by Group
+
+This plot shows the distribution of monthly spending across merchants in both groups over time. The median line tracks the typical merchant, while the bands show the spread (IQR and 10th-90th percentile) --- useful for spotting whether treatment affects the entire distribution or just certain merchants.
+
+```{r quantile-ribbons, fig.height=7}
+quantile_data <- panel_df %>%
+  group_by(date, group) %>%
+  summarize(
+    median = median(spend),
+    q10 = quantile(spend, 0.1),
+    q25 = quantile(spend, 0.25),
+    q75 = quantile(spend, 0.75),
+    q90 = quantile(spend, 0.9),
+    .groups = "drop"
+  )
+
+ggplot(quantile_data, aes(x = date)) +
+  geom_rect(
+    data = data.frame(group = unique(quantile_data$group)),
+    aes(xmin = treatment_date, xmax = max(dates),
+        ymin = -Inf, ymax = Inf),
+    fill = "#56B4E9", alpha = 0.08, inherit.aes = FALSE
+  ) +
+  geom_ribbon(aes(ymin = q10, ymax = q90, fill = group), alpha = 0.2) +
+  geom_ribbon(aes(ymin = q25, ymax = q75, fill = group), alpha = 0.3) +
+  geom_line(aes(y = median, color = group), linewidth = 0.8) +
+  scale_color_manual(values = c("Treated" = cb_palette["treated"],
+                                "Control" = cb_palette["control"])) +
+  scale_fill_manual(values = c("Treated" = cb_palette["treated"],
+                               "Control" = cb_palette["control"])) +
+  scale_y_continuous(labels = dollar_format()) +
+  facet_wrap(~group, ncol = 1, scales = "free_y") +
+  labs(
+    x = NULL, y = "Monthly Spend ($)",
+    caption = "Bands: 10th-90th percentile (light) and IQR (dark); line: median"
+  ) +
+  theme_sdid() +
+  theme(legend.position = "none",
+        strip.text = element_text(face = "bold", size = 12))
+```
+
+## 2. Relative Change from Baseline
+
+This plot normalizes each merchant's spending to 100 at the last pre-treatment month, then tracks relative changes. It removes scale differences between groups, making it easier to compare growth trajectories and see whether the treated group diverges after the event.
+
+```{r normalized-trends}
+baseline_date <- dates[n_pre]
+
+normalized_quantiles <- panel_df %>%
+  group_by(merchant) %>%
+  mutate(indexed = 100 * spend / spend[date == baseline_date]) %>%
+  ungroup() %>%
+  group_by(date, group) %>%
+  summarize(
+    median = median(indexed),
+    q25 = quantile(indexed, 0.25),
+    q75 = quantile(indexed, 0.75),
+    .groups = "drop"
+  )
+
+ggplot(normalized_quantiles, aes(x = date)) +
+  annotate("rect",
+    xmin = treatment_date, xmax = max(dates),
+    ymin = -Inf, ymax = Inf,
+    fill = "#56B4E9", alpha = 0.1
+  ) +
+  geom_vline(xintercept = treatment_date, linetype = "dashed", color = "#666666") +
+  geom_hline(yintercept = 100, color = "#999999", linewidth = 0.4) +
+  geom_ribbon(aes(ymin = q25, ymax = q75, fill = group), alpha = 0.25) +
+  geom_line(aes(y = median, color = group, linetype = group), linewidth = 0.9) +
+  scale_color_manual(values = c("Treated" = cb_palette["treated"],
+                                "Control" = cb_palette["control"])) +
+  scale_fill_manual(values = c("Treated" = cb_palette["treated"],
+                               "Control" = cb_palette["control"])) +
+  scale_linetype_manual(values = c("Treated" = "solid", "Control" = "dashed")) +
+  annotate("text", x = treatment_date + 15, y = Inf, label = "Post-treatment",
+           vjust = 1.5, hjust = 0, color = "#666666", size = 3.5) +
+  labs(
+    title = sprintf("Spending Index (baseline %s = 100)", format(baseline_date, "%b %Y")),
+    subtitle = sprintf("Treated n = %d, Control n = %d | Median with IQR band",
+                       n_treated, n_control),
+    x = NULL, y = "Index (baseline = 100)"
+  ) +
+  theme_sdid()
+```
+
+## 3. Event Study
+
+The event study shows the difference between treated and control groups at each time period, normalized to zero at month -1. Pre-treatment coefficients near zero support the parallel trends assumption; post-treatment coefficients measure the dynamic treatment effect. Confidence intervals from bootstrap help assess statistical significance.
+
+```{r event-study}
+panel_df <- panel_df %>%
+  mutate(event_time = as.integer(round(
+    as.numeric(difftime(date, treatment_date, units = "days")) / 30
+  )))
+
+# Bootstrap CI for event study coefficients
+set.seed(42)
+n_boot <- 200
+
+boot_event_diff <- function(data) {
+  merchants <- unique(data$merchant)
+  treated_merchants <- merchants[grepl("^Treated", merchants)]
+  control_merchants <- merchants[grepl("^Control", merchants)]
+  boot_data <- bind_rows(
+    data %>% filter(merchant %in% sample(treated_merchants, replace = TRUE)),
+    data %>% filter(merchant %in% sample(control_merchants, replace = TRUE))
+  )
+  boot_data %>%
+    group_by(event_time, group) %>%
+    summarize(mean_spend = mean(spend), .groups = "drop") %>%
+    pivot_wider(names_from = group, values_from = mean_spend) %>%
+    mutate(diff_norm = (Treated - Control) -
+             (Treated[event_time == -1] - Control[event_time == -1])) %>%
+    select(event_time, diff_norm)
+}
+
+boot_df <- bind_rows(
+  replicate(n_boot, boot_event_diff(panel_df), simplify = FALSE),
+  .id = "boot_id"
+)
+
+event_ci <- boot_df %>%
+  group_by(event_time) %>%
+  summarize(
+    ci_lo = quantile(diff_norm, 0.05, na.rm = TRUE),
+    ci_hi = quantile(diff_norm, 0.95, na.rm = TRUE),
+    .groups = "drop"
+  )
+
+event_diff <- panel_df %>%
+  group_by(event_time, group) %>%
+  summarize(mean_spend = mean(spend), .groups = "drop") %>%
+  pivot_wider(names_from = group, values_from = mean_spend) %>%
+  mutate(
+    diff = Treated - Control,
+    diff_norm = diff - diff[event_time == -1],
+    period = ifelse(event_time >= 0, "Post", "Pre")
+  ) %>%
+  left_join(event_ci, by = "event_time")
+
+pretrend_fit <- lm(diff_norm ~ event_time, data = filter(event_diff, event_time < 0))
+pretrend_p <- summary(pretrend_fit)$coefficients[2, 4]
+pretrend_verdict <- ifelse(pretrend_p > 0.1,
+                           sprintf("Pre-trends parallel (p = %.2f)", pretrend_p),
+                           sprintf("WARNING: Pre-trend detected (p = %.2f)", pretrend_p))
+
+ggplot(event_diff, aes(x = event_time)) +
+  annotate("rect",
+    xmin = -0.5, xmax = max(event_diff$event_time) + 0.5,
+    ymin = -Inf, ymax = Inf, fill = "#cccccc", alpha = 0.2
+  ) +
+  geom_hline(yintercept = 0, color = "#888888") +
+  geom_vline(xintercept = -0.5, linetype = "dashed", color = "#666666") +
+  geom_errorbar(aes(ymin = ci_lo, ymax = ci_hi, color = period),
+                width = 0.3, linewidth = 0.5) +
+  geom_point(aes(y = diff_norm, color = period, shape = period), size = 3) +
+  scale_color_manual(values = c("Pre" = cb_palette["pre"], "Post" = cb_palette["post"])) +
+  scale_shape_manual(values = c("Pre" = 16, "Post" = 17)) +
+  scale_y_continuous(labels = dollar_format()) +
+  labs(
+    title = "Event Study: Treated - Control ($)",
+    subtitle = sprintf("Months relative to event | 90%% CI from bootstrap | %s",
+                       pretrend_verdict),
+    x = "Months Relative to Event", y = "Effect ($)"
+  ) +
+  theme_sdid()
+```
+
+## 4. Synthetic DiD Estimation
+
+This section runs the three main estimation methods: Synthetic DiD (SDID), Synthetic Control (SC), and simple Difference-in-Differences (DiD). The visual scorecard compares their point estimates with 95% confidence intervals from bootstrap, allowing quick assessment of whether methods agree and how precise the estimates are.
+
+```{r run-synthdid}
+# Fit models using the formula interface (se = TRUE stores bootstrap SE)
+result <- synthdid(spend ~ treated, data = panel_df,
+                   index = c("merchant", "date"),
+                   se = TRUE, se_method = "bootstrap",
+                   se_replications = sdid_se_replications,
+                   min.decrease = sdid_min_decrease, max.iter = sdid_max_iter)
+
+result_sc  <- update(result, method = "sc")
+result_did <- update(result, method = "did")
+
+# True effect in dollar terms
+true_effect_dollar <- true_effect *
+  mean(filter(panel_df, group == "Treated", date >= treatment_date)$spend)
+
+# Extract CIs via confint()
+ci_sdid <- confint(result)
+ci_sc   <- confint(result_sc)
+ci_did  <- confint(result_did)
+
+# Visual scorecard
+estimates_df <- tibble(
+  Method   = c("Synthetic DiD", "Synthetic Control", "Diff-in-Diff", "True Effect"),
+  Estimate = c(coef(result), coef(result_sc), coef(result_did), true_effect_dollar),
+  ci_lo    = c(ci_sdid[, "Lower"], ci_sc[, "Lower"], ci_did[, "Lower"], NA),
+  ci_hi    = c(ci_sdid[, "Upper"], ci_sc[, "Upper"], ci_did[, "Upper"], NA)
+) %>%
+  mutate(Method = factor(Method, levels = rev(Method)))
+
+ggplot(estimates_df, aes(y = Method, x = Estimate)) +
+  geom_vline(xintercept = true_effect_dollar, linetype = "dashed",
+             color = "#888888", linewidth = 0.7) +
+  geom_errorbarh(
+    data = filter(estimates_df, !is.na(ci_lo)),
+    aes(xmin = ci_lo, xmax = ci_hi),
+    height = 0.2, color = cb_palette["pre"], linewidth = 0.7
+  ) +
+  geom_point(aes(color = ifelse(Method == "True Effect", "true", "estimate")),
+             size = 5, show.legend = FALSE) +
+  geom_text(aes(label = sprintf("$%.1f", Estimate)),
+            hjust = -0.3, fontface = "bold", size = 4) +
+  scale_color_manual(values = c("estimate" = cb_palette["treated"],
+                                "true" = cb_palette["synthetic"])) +
+  scale_x_continuous(labels = dollar_format()) +
+  annotate("text", x = true_effect_dollar, y = 0.5,
+           label = "True Effect", color = "#666666", size = 3.2, hjust = -0.1) +
+  labs(
+    title = "Treatment Effect Estimates with 95% CI",
+    subtitle = sprintf("Bootstrap SE | Treated n = %d, Control n = %d, Pre-periods = %d",
+                       n_treated, n_control, n_pre),
+    x = "Effect ($)", y = NULL
+  ) +
+  theme_sdid() +
+  theme(panel.grid.major.y = element_blank())
+```
+
+## 5. Treated vs Synthetic Control
+
+The main SDID result: the blue line shows average spending for treated merchants, while the orange dashed line shows the synthetic control (a weighted average of untreated merchants). In the pre-period, they should track closely (validating the method); the post-treatment gap measures the causal effect. The bottom panel isolates this gap over time.
+
+```{r treated-vs-synthetic, fig.height=8}
+traj_df <- extract_trajectories(result) %>%
+  mutate(period = factor(ifelse(date < treatment_date, "Pre", "Post"),
+                         levels = c("Pre", "Post")))
+
+post_avg_gap <- traj_df %>% filter(period == "Post") %>% pull(gap) %>% mean()
+
+# Main trajectory plot
+p_main <- ggplot(traj_df, aes(x = date)) +
+  annotate("rect",
+    xmin = treatment_date, xmax = max(dates),
+    ymin = -Inf, ymax = Inf, fill = "#cccccc", alpha = 0.15
+  ) +
+  geom_ribbon(
+    data = filter(traj_df, period == "Post"),
+    aes(ymin = synthetic, ymax = treated),
+    fill = cb_palette["post"], alpha = 0.3
+  ) +
+  geom_vline(xintercept = treatment_date, linetype = "dashed", color = "#666666") +
+  geom_line(aes(y = treated, color = "Treated"), linewidth = 0.8) +
+  geom_line(aes(y = synthetic, color = "Synthetic Control"),
+            linewidth = 0.8, linetype = "dashed") +
+  annotate("text", x = treatment_date + 15, y = Inf,
+           label = "Post-treatment", vjust = 1.5, hjust = 0,
+           color = "#666666", size = 3.5) +
+  annotate("label",
+    x = max(dates) - 90,
+    y = mean(filter(traj_df, period == "Post")$treated) - post_avg_gap / 2,
+    label = sprintf("Avg gap: $%.0f", post_avg_gap),
+    fill = "white", label.size = 0.3, size = 3.5
+  ) +
+  scale_color_manual(values = c("Treated" = cb_palette["treated"],
+                                "Synthetic Control" = cb_palette["synthetic"])) +
+  scale_y_continuous(labels = dollar_format()) +
+  labs(
+    title = "Treated vs Synthetic Control",
+    subtitle = sprintf("Post-treatment effect = $%.1f (95%% CI: $%.1f - $%.1f)",
+                       coef(result), ci_sdid[, "Lower"], ci_sdid[, "Upper"]),
+    x = NULL, y = "Monthly Spend ($)"
+  ) +
+  theme_sdid()
+
+# Gap plot
+p_gap <- ggplot(traj_df, aes(x = date)) +
+  geom_area(
+    data = filter(traj_df, period == "Post"),
+    aes(y = gap), fill = cb_palette["post"], alpha = 0.4
+  ) +
+  geom_hline(yintercept = 0, color = "#888888") +
+  geom_vline(xintercept = treatment_date, linetype = "dashed", color = "#666666") +
+  geom_line(aes(y = gap), color = cb_palette["treated"], linewidth = 0.8) +
+  scale_y_continuous(labels = dollar_format()) +
+  labs(title = "Gap (Treated - Synthetic)", x = NULL, y = "Gap ($)") +
+  theme_sdid() +
+  theme(legend.position = "none")
+
+p_main / p_gap + plot_layout(heights = c(2, 1))
+```
+
+## 6. Method Comparison
+
+Compares three estimation approaches side-by-side using a common y-scale for fair visual comparison. SDID uses both unit and time weights, SC uses only unit weights, and DiD uses uniform weights. The bottom panel shows the effect path (gap between treated and synthetic) for each method, revealing whether they agree on both the magnitude and timing of the effect.
+
+```{r compare-methods}
+traj_sc  <- extract_trajectories(result_sc)
+traj_did <- extract_trajectories(result_did)
+
+gap_df <- bind_rows(
+  traj_df  %>% transmute(date, gap, Method = "Synthetic DiD"),
+  traj_sc  %>% transmute(date, gap, Method = "Synthetic Control"),
+  traj_did %>% transmute(date, gap, Method = "Diff-in-Diff")
+) %>%
+  mutate(Method = factor(Method,
+    levels = c("Synthetic DiD", "Synthetic Control", "Diff-in-Diff")))
+
+method_labels <- c(
+  "Synthetic DiD"     = sprintf("Synthetic DiD ($%.1f)",     coef(result)),
+  "Synthetic Control" = sprintf("Synthetic Control ($%.1f)", coef(result_sc)),
+  "Diff-in-Diff"      = sprintf("Diff-in-Diff ($%.1f)",      coef(result_did))
+)
+
+ggplot(gap_df, aes(x = date, y = gap, color = Method, linetype = Method)) +
+  annotate("rect",
+    xmin = treatment_date, xmax = max(dates),
+    ymin = -Inf, ymax = Inf, fill = "#cccccc", alpha = 0.15
+  ) +
+  geom_hline(yintercept = 0, color = "#888888") +
+  geom_vline(xintercept = treatment_date, linetype = "dashed", color = "#666666") +
+  geom_line(linewidth = 0.9) +
+  scale_color_manual(
+    values = c("Synthetic DiD"     = cb_palette["treated"],
+               "Synthetic Control" = cb_palette["synthetic"],
+               "Diff-in-Diff"      = cb_palette["placebo"]),
+    labels = method_labels
+  ) +
+  scale_linetype_manual(
+    values = c("Synthetic DiD" = "solid",
+               "Synthetic Control" = "dashed",
+               "Diff-in-Diff" = "dotted"),
+    labels = method_labels
+  ) +
+  scale_y_continuous(labels = dollar_format()) +
+  annotate("text", x = treatment_date + 15, y = Inf,
+           label = "Post-treatment", vjust = 1.5, hjust = 0,
+           color = "#666666", size = 3.5) +
+  labs(
+    title = "Method Comparison: Effect Path (Treated - Synthetic)",
+    subtitle = sprintf("SDID: $%.1f | SC: $%.1f | DiD: $%.1f (with 95%% CI)",
+                       coef(result), coef(result_sc), coef(result_did)),
+    x = NULL, y = "Gap ($)"
+  ) +
+  theme_sdid() +
+  theme(legend.key.width = unit(1.5, "cm"))
+```
+
+## 7. Weight Diagnostics
+
+These diagnostics reveal how SDID constructs the synthetic control. Concentrated weights on few donors can make estimates sensitive to those units; dispersed weights suggest a more robust synthetic.
+
+### Unit Weights
+
+The bar chart shows the top 10 donor weights, while the cumulative curve shows how many control units are needed to reach 90% of total weight. A steep curve (few units dominating) may warrant sensitivity checks.
+
+```{r unit-weights, fig.height=5}
+omega_df <- get_unit_weights(result)
+n_effective <- round(1 / sum(omega_df$weight^2))
+n_90pct <- min(which(omega_df$cumulative >= 0.9))
+
+top_10 <- omega_df %>%
+  slice_head(n = 10) %>%
+  mutate(
+    weight_pct = weight * 100,
+    unit = factor(unit, levels = rev(unit))
+  )
+
+p_bars <- ggplot(top_10, aes(x = weight_pct, y = unit)) +
+  geom_col(fill = cb_palette["treated"], width = 0.7) +
+  geom_text(aes(label = sprintf("%.1f%%", weight_pct)),
+            hjust = -0.1, size = 3.2) +
+  scale_x_continuous(labels = function(x) paste0(x, "%"),
+                     expand = expansion(mult = c(0, 0.15))) +
+  labs(title = "Top 10 Donor Weights", x = "Weight (%)", y = NULL) +
+  theme_sdid() +
+  theme(legend.position = "none")
+
+cumul_df <- omega_df %>% mutate(cum_pct = cumulative * 100)
+
+p_cumul <- ggplot(cumul_df, aes(x = rank, y = cum_pct)) +
+  geom_area(fill = cb_palette["treated"], alpha = 0.25) +
+  geom_line(color = cb_palette["treated"], linewidth = 0.8) +
+  geom_hline(yintercept = 90, linetype = "dashed", color = "#888888") +
+  geom_point(data = cumul_df[n_90pct, ],
+             color = cb_palette["synthetic"], size = 3) +
+  annotate("text",
+    x = n_90pct + 8, y = cumul_df$cum_pct[n_90pct],
+    label = sprintf("%d units -> 90%%", n_90pct),
+    color = "#666666", size = 3.5, hjust = 0
+  ) +
+  scale_y_continuous(limits = c(0, 100), labels = function(x) paste0(x, "%")) +
+  labs(
+    title = sprintf("Cumulative Weights (effective n = %d of %d)", n_effective, n_control),
+    subtitle = "Control units ranked by weight",
+    x = "Ranked Control Units", y = "Cumulative Weight (%)"
+  ) +
+  theme_sdid() +
+  theme(legend.position = "none")
+
+p_bars | p_cumul
+```
+
+### Time Weights
+
+Time weights show which pre-treatment periods matter most for constructing the synthetic control. SDID typically up-weights periods closer to treatment; if weights concentrate on specific months, the estimate may be sensitive to idiosyncratic shocks in those periods.
+
+```{r time-weights, fig.height=4}
+lambda_df <- get_time_weights(result)
+n_effective_t <- round(1 / sum(lambda_df$weight^2))
+equal_weight_pct <- 100 / n_pre
+
+ggplot(lambda_df, aes(x = date, y = weight * 100)) +
+  geom_col(fill = cb_palette["synthetic"], width = 20) +
+  geom_hline(yintercept = equal_weight_pct, linetype = "dashed", color = "#888888") +
+  annotate("text",
+    x = min(lambda_df$date) + 30, y = equal_weight_pct + 0.3,
+    label = "Equal weighting", color = "#666666", size = 3.2, hjust = 0, vjust = 0
+  ) +
+  scale_x_date(date_labels = "%b %Y", date_breaks = "3 months") +
+  scale_y_continuous(labels = function(x) paste0(x, "%")) +
+  labs(
+    title = sprintf("Time Weights (effective periods = %d of %d pre-treatment months)",
+                    n_effective_t, n_pre),
+    subtitle = sprintf("Pre-period: %s to %s | Higher bars = more weight in constructing synthetic",
+                       format(min(lambda_df$date), "%b %Y"),
+                       format(max(lambda_df$date), "%b %Y")),
+    x = NULL, y = "Weight (%)"
+  ) +
+  theme_sdid() +
+  theme(legend.position = "none",
+        axis.text.x = element_text(angle = 45, hjust = 1))
+```
+
+### Top Donors
+
+Shows the spending trajectories of the 15 highest-weighted donor units, each normalized to 100 at the treatment start. The faint blue line is the treated average for reference. Good donors should have similar pre-treatment shapes to the treated group --- divergent shapes may indicate poor matches.
+
+```{r top-donors, fig.height=6}
+top_donors <- omega_df %>% slice_head(n = 15)
+
+donor_trajectories <- panel_df %>%
+  filter(merchant %in% top_donors$unit) %>%
+  left_join(top_donors %>% select(unit, weight, rank),
+            by = c("merchant" = "unit")) %>%
+  group_by(merchant) %>%
+  mutate(indexed = 100 * spend / spend[date == dates[n_pre]]) %>%
+  ungroup() %>%
+  mutate(label = sprintf("#%d: %.1f%%", rank, weight * 100))
+
+treated_avg <- panel_df %>%
+  filter(group == "Treated") %>%
+  group_by(date) %>%
+  summarize(mean_spend = mean(spend), .groups = "drop") %>%
+  mutate(indexed = 100 * mean_spend / mean_spend[date == dates[n_pre]])
+
+ggplot() +
+  geom_vline(xintercept = treatment_date, linetype = "dashed", color = "#666666") +
+  geom_hline(yintercept = 100, color = "#999999", linewidth = 0.4) +
+  geom_line(
+    data = donor_trajectories,
+    aes(x = date, y = indexed, group = merchant, color = "Donors"),
+    linewidth = 0.5, alpha = 0.6
+  ) +
+  geom_line(
+    data = treated_avg,
+    aes(x = date, y = indexed, color = "Treated avg"),
+    linewidth = 1.2, linetype = "dashed"
+  ) +
+  scale_color_manual(values = c("Donors" = cb_palette["synthetic"],
+                                "Treated avg" = cb_palette["treated"])) +
+  labs(
+    title = "Top 15 Donor Trajectories (indexed to 100 at treatment start)",
+    subtitle = "Orange = donor; blue (dashed) = treated average | Focus on shape similarity",
+    x = NULL, y = "Index (baseline = 100)"
+  ) +
+  theme_sdid()
+```
+
+## 8. Treatment Effect Heterogeneity
+
+**Note:** Unit-level effects are heuristic estimates (not fully identified in the SDID framework). They provide directional insight into heterogeneity but should not be interpreted as precise causal effects for individual merchants.
+
+```{r heterogeneity, fig.height=5}
+set.seed(42)
+n_boot_unit <- 100
+
+# Compute per-merchant DiD relative to the synthetic control
+synth_change <- traj_df %>%
+  group_by(period = ifelse(date < treatment_date, "pre", "post")) %>%
+  summarize(synth = mean(synthetic), .groups = "drop") %>%
+  pivot_wider(names_from = period, values_from = synth)
+synth_did_change <- synth_change$post - synth_change$pre
+
+unit_effects_df <- panel_df %>%
+  filter(group == "Treated") %>%
+  mutate(period = ifelse(date < treatment_date, "pre", "post")) %>%
+  group_by(merchant, period) %>%
+  summarize(mean_spend = mean(spend), .groups = "drop") %>%
+  pivot_wider(names_from = period, values_from = mean_spend) %>%
+  mutate(effect = (post - pre) - synth_did_change) %>%
+  arrange(effect) %>%
+  mutate(rank = row_number())
+
+# Bootstrap CIs (resample time periods)
+pre_dates  <- dates[1:n_pre]
+post_dates <- dates[(n_pre + 1):length(dates)]
+
+boot_unit_effects <- function() {
+  b_pre  <- sample(pre_dates,  replace = TRUE)
+  b_post <- sample(post_dates, replace = TRUE)
+  bdf <- panel_df %>%
+    filter(date %in% c(b_pre, b_post)) %>%
+    mutate(period = ifelse(date < treatment_date, "pre", "post"))
+
+  synth_b <- traj_df %>%
+    filter(date %in% c(b_pre, b_post)) %>%
+    mutate(period = ifelse(date < treatment_date, "pre", "post")) %>%
+    group_by(period) %>%
+    summarize(synth = mean(synthetic), .groups = "drop") %>%
+    pivot_wider(names_from = period, values_from = synth)
+
+  bdf %>%
+    filter(group == "Treated") %>%
+    group_by(merchant, period) %>%
+    summarize(m = mean(spend), .groups = "drop") %>%
+    pivot_wider(names_from = period, values_from = m) %>%
+    mutate(effect = (post - pre) - (synth_b$post - synth_b$pre)) %>%
+    select(merchant, effect)
+}
+
+boot_effects <- bind_rows(
+  replicate(n_boot_unit, boot_unit_effects(), simplify = FALSE),
+  .id = "b"
+)
+
+effect_ci <- boot_effects %>%
+  group_by(merchant) %>%
+  summarize(ci_lo = quantile(effect, 0.1), ci_hi = quantile(effect, 0.9),
+            .groups = "drop")
+
+effect_df <- unit_effects_df %>%
+  left_join(effect_ci, by = "merchant")
+
+ggplot(effect_df, aes(y = reorder(merchant, effect))) +
+  geom_vline(xintercept = 0, color = "#888888") +
+  geom_vline(xintercept = coef(result), linetype = "dashed",
+             color = cb_palette["synthetic"], linewidth = 0.7) +
+  geom_errorbarh(aes(xmin = ci_lo, xmax = ci_hi),
+                 height = 0, color = cb_palette["pre"], linewidth = 0.4) +
+  geom_point(aes(x = effect), color = cb_palette["treated"], size = 1.5) +
+  annotate("text",
+    x = coef(result), y = 0.5,
+    label = sprintf("SDID: $%.1f", coef(result)),
+    color = "#666666", size = 3, hjust = -0.1
+  ) +
+  scale_x_continuous(labels = dollar_format()) +
+  labs(
+    title = sprintf("Indicative Unit-level Effects (SD = $%.1f)", sd(effect_df$effect)),
+    subtitle = "Each dot = one merchant with 80% CI | Ranked lowest to highest | NOT causal estimates",
+    x = "Effect ($)", y = NULL
+  ) +
+  theme_sdid() +
+  theme(axis.text.y = element_text(size = 6),
+        panel.grid.major.y = element_blank())
+```
+
+### Effect Distribution
+
+The histogram shows how unit-level effects are distributed across treated merchants. A tight distribution around the SDID estimate suggests homogeneous treatment effects; a wide spread indicates substantial heterogeneity that warrants further investigation.
+
+```{r effect-distribution, fig.height=4}
+effect_pcts <- quantile(effect_df$effect, c(0.25, 0.5, 0.75))
+pct_positive <- mean(effect_df$effect > 0) * 100
+
+ggplot(effect_df, aes(x = effect)) +
+  geom_histogram(aes(y = after_stat(density)), bins = 15,
+                 fill = cb_palette["treated"], color = "white", alpha = 0.7) +
+  geom_density(color = cb_palette["treated"], linewidth = 0.8) +
+  geom_vline(xintercept = 0, color = "#888888") +
+  geom_vline(xintercept = coef(result),
+             color = cb_palette["synthetic"], linewidth = 0.8) +
+  geom_vline(xintercept = effect_pcts, linetype = "dashed",
+             color = cb_palette["pre"], linewidth = 0.5) +
+  annotate("label",
+    x = coef(result), y = Inf,
+    label = sprintf("SDID: $%.1f", coef(result)),
+    fill = cb_palette["synthetic"], color = "white",
+    fontface = "bold", size = 3, vjust = 1.5, label.size = 0
+  ) +
+  scale_x_continuous(labels = dollar_format()) +
+  labs(
+    title = "Distribution of Treatment Effects ($)",
+    subtitle = sprintf("P25 = $%.0f | Median = $%.0f | P75 = $%.0f | %.0f%% positive effects",
+                       effect_pcts[1], effect_pcts[2], effect_pcts[3], pct_positive),
+    x = "Effect ($)", y = "Density"
+  ) +
+  theme_sdid() +
+  theme(legend.position = "none")
+```
+
+## 9. Placebo Tests
+
+Placebo tests run SDID at fake treatment dates during the pre-period (when no true effect should exist). If the method is valid, placebo estimates should cluster around zero. The true estimate should be an outlier --- the p-value shows where it ranks in the distribution of |placebo effects|. A low p-value supports a genuine treatment effect.
+
+```{r placebo-tests, fig.height=8}
+# In-time placebos: use only pre-treatment data, vary fake treatment onset
+placebo_T0s <- seq(8, n_pre - 7, by = 4)  # fake pre-treatment lengths
+n_post_placebo <- 4                         # fake post window of 4 months
+
+placebo_results <- lapply(placebo_T0s, function(fake_T0) {
+  last_date <- dates[fake_T0 + n_post_placebo]
+  fake_treatment <- dates[fake_T0 + 1]
+  panel_sub <- panel_df %>%
+    filter(date <= last_date) %>%
+    mutate(treated = as.integer(group == "Treated" & date >= fake_treatment))
+  tau <- tryCatch(
+    coef(synthdid(spend ~ treated, data = panel_sub,
+                  index = c("merchant", "date"),
+                  min.decrease = sdid_min_decrease, max.iter = sdid_max_iter)),
+    error = function(e) NA_real_
+  )
+  tibble(fake_T0 = fake_T0, estimate = tau)
+})
+
+placebo_df <- bind_rows(placebo_results) %>% filter(!is.na(estimate))
+true_estimate <- coef(result)
+placebo_rank <- sum(abs(placebo_df$estimate) >= abs(true_estimate)) + 1
+placebo_pval <- placebo_rank / (nrow(placebo_df) + 1)
+
+# Timeline plot
+p_placebo_timeline <- ggplot() +
+  geom_hline(yintercept = 0, color = "#888888") +
+  geom_line(data = placebo_df, aes(x = fake_T0, y = estimate),
+            color = cb_palette["placebo"], linewidth = 0.6) +
+  geom_point(data = placebo_df, aes(x = fake_T0, y = estimate),
+             color = cb_palette["placebo"], size = 2.5) +
+  geom_point(data = tibble(fake_T0 = n_pre, estimate = true_estimate),
+             aes(x = fake_T0, y = estimate),
+             color = cb_palette["treated"], size = 4, shape = 17) +
+  annotate("text", x = n_pre, y = true_estimate,
+           label = sprintf("True: $%.1f", true_estimate),
+           color = cb_palette["treated"], size = 3.5, hjust = -0.15, vjust = -0.5) +
+  scale_y_continuous(labels = dollar_format()) +
+  labs(
+    title = "In-time Placebo Tests",
+    subtitle = "Effect estimates at fake treatment dates vs true treatment",
+    x = "Placebo pre-treatment length", y = "Estimate ($)"
+  ) +
+  theme_sdid() + theme(legend.position = "none")
+
+# Distribution plot
+p_placebo_dist <- ggplot(placebo_df, aes(x = estimate)) +
+  geom_histogram(aes(y = after_stat(density)), bins = 10,
+                 fill = cb_palette["placebo"], color = "white", alpha = 0.7) +
+  geom_density(color = cb_palette["placebo"], linewidth = 0.8) +
+  geom_vline(xintercept = 0, linetype = "dashed", color = "#888888") +
+  geom_vline(xintercept = true_estimate, color = cb_palette["treated"], linewidth = 0.8) +
+  annotate("label",
+    x = true_estimate, y = Inf,
+    label = sprintf("True: $%.1f\np-value: %.2f", true_estimate, placebo_pval),
+    fill = cb_palette["treated"], color = "white",
+    fontface = "bold", size = 3, vjust = 1.5, label.size = 0
+  ) +
+  scale_x_continuous(labels = dollar_format()) +
+  labs(
+    title = "Placebo Distribution",
+    subtitle = sprintf("True estimate is %s percentile of |placebos|",
+                       scales::ordinal(100 - round(placebo_pval * 100))),
+    x = "Estimate", y = "Density"
+  ) +
+  theme_sdid() + theme(legend.position = "none")
+
+p_placebo_timeline / p_placebo_dist
+```
+
+## 10. Leave-one-out Sensitivity
+
+Tests how sensitive the SDID estimate is to individual donor units by re-estimating after dropping each of the top 10 highest-weighted donors. Large changes (highlighted in pink) indicate that the estimate depends heavily on that unit. Stable estimates across all leave-one-out runs suggest robustness.
+
+```{r leave-one-out, fig.height=5}
+top_10_loo <- omega_df %>% slice_head(n = 10)
+
+loo_results <- lapply(seq_len(nrow(top_10_loo)), function(i) {
+  dropped <- top_10_loo$unit[i]
+  panel_loo <- panel_df %>% filter(merchant != dropped)
+  tau_loo <- coef(synthdid(spend ~ treated, data = panel_loo,
+                           index = c("merchant", "date"),
+                           min.decrease = sdid_min_decrease,
+                           max.iter = sdid_max_iter))
+  tibble(dropped = dropped, weight = top_10_loo$weight[i],
+         estimate = tau_loo, rank = i)
+})
+
+loo_df <- bind_rows(loo_results) %>%
+  mutate(
+    change = estimate - coef(result),
+    abs_change = abs(change),
+    is_max = abs_change == max(abs_change),
+    dropped = factor(dropped, levels = rev(dropped))
+  )
+
+max_change_donor <- loo_df$dropped[loo_df$is_max]
+max_change_val <- loo_df$change[loo_df$is_max]
+
+ggplot(loo_df, aes(y = dropped)) +
+  geom_vline(xintercept = coef(result),
+             color = cb_palette["treated"], linewidth = 0.8) +
+  geom_segment(aes(x = coef(result), xend = estimate, color = is_max),
+               linewidth = 0.8) +
+  geom_point(aes(x = estimate, size = weight),
+             color = cb_palette["synthetic"]) +
+  scale_color_manual(values = c("FALSE" = cb_palette["pre"],
+                                "TRUE" = cb_palette["placebo"]),
+                     guide = "none") +
+  scale_size_continuous(range = c(2, 6), labels = percent_format()) +
+  scale_x_continuous(labels = dollar_format()) +
+  labs(
+    title = sprintf("Leave-one-out Sensitivity (full estimate: $%.1f)", coef(result)),
+    subtitle = sprintf("Top 10 donors | Largest change: %s (delta $%.1f) highlighted in pink",
+                       max_change_donor, max_change_val),
+    x = "Estimate ($)", y = NULL, size = "Weight"
+  ) +
+  theme_sdid() +
+  theme(panel.grid.major.y = element_blank())
+```
+
+## 11. Pre-treatment Fit Quality
+
+Assesses how well the synthetic control matches the treated group before treatment. The top panel overlays both trajectories; the bottom shows residuals as a percentage of the treated value. MAPE < 5% generally indicates good fit. Systematic patterns in residuals (e.g., trending up/down) may signal issues with the parallel trends assumption.
+
+```{r pretreatment-fit, fig.height=7}
+pre_fit <- traj_df %>%
+  filter(date < treatment_date) %>%
+  mutate(
+    error = treated - synthetic,
+    pct_error = 100 * error / treated
+  )
+
+rmse <- sqrt(mean(pre_fit$error^2))
+mape <- mean(abs(pre_fit$error / pre_fit$treated)) * 100
+fit_verdict <- ifelse(mape < 5, "Good fit", "Check fit quality")
+
+p_fit <- ggplot(pre_fit, aes(x = date)) +
+  geom_ribbon(aes(ymin = pmin(treated, synthetic), ymax = pmax(treated, synthetic)),
+              fill = cb_palette["pre"], alpha = 0.25) +
+  geom_line(aes(y = treated, color = "Treated"), linewidth = 0.8) +
+  geom_line(aes(y = synthetic, color = "Synthetic"),
+            linewidth = 0.8, linetype = "dashed") +
+  scale_color_manual(values = c("Treated" = cb_palette["treated"],
+                                "Synthetic" = cb_palette["synthetic"])) +
+  scale_y_continuous(labels = dollar_format()) +
+  labs(
+    title = sprintf("Pre-treatment Fit: %s", fit_verdict),
+    subtitle = sprintf("RMSE = $%.2f | MAPE = %.1f%% | Pre-treatment period only", rmse, mape),
+    x = NULL, y = "Monthly Spend ($)"
+  ) +
+  theme_sdid()
+
+p_resid <- ggplot(pre_fit, aes(x = date, y = pct_error)) +
+  geom_hline(yintercept = 0, color = "#888888") +
+  geom_hline(yintercept = c(-5, 5), linetype = "dashed", color = "#999999") +
+  geom_col(fill = cb_palette["pre"], width = 20) +
+  scale_x_date(date_labels = "%b %Y", date_breaks = "3 months") +
+  scale_y_continuous(labels = function(x) paste0(x, "%")) +
+  labs(title = "Residuals (% of treated)", x = NULL, y = "Residual (%)") +
+  theme_sdid() +
+  theme(legend.position = "none",
+        axis.text.x = element_text(angle = 45, hjust = 1))
+
+p_fit / p_resid + plot_layout(heights = c(2, 1))
+```
+
+### Robustness Summary Panel
+
+A compact visual summary of key diagnostics for quick assessment. Green indicates good values, yellow is acceptable, and red signals potential concerns.
+
+```{r robustness-panel, fig.height=2.5}
+robustness_df <- tibble(
+  Metric = c("Pre-fit MAPE", "Pre-fit RMSE", "Placebo p-value"),
+  Value  = c(mape, rmse, placebo_pval)
+) %>%
+  mutate(
+    display = case_when(
+      Metric == "Pre-fit MAPE"    ~ sprintf("%.1f%%", Value),
+      Metric == "Pre-fit RMSE"    ~ sprintf("$%.2f", Value),
+      TRUE                        ~ sprintf("%.2f", Value)
+    ),
+    Status = case_when(
+      Metric == "Pre-fit MAPE" & Value < 5  ~ "Good",
+      Metric == "Pre-fit MAPE" & Value < 10 ~ "Acceptable",
+      Metric == "Pre-fit MAPE"              ~ "Poor",
+      Metric == "Placebo p-value" & Value < 0.1 ~ "Significant",
+      TRUE ~ "Neutral"
+    ),
+    fill_color = case_when(
+      Status == "Good"        ~ "#b8e0b8",
+      Status == "Acceptable"  ~ "#fff3b0",
+      Status == "Poor"        ~ "#f4b4b4",
+      Status == "Significant" ~ "#b8e0b8",
+      TRUE                    ~ "#e0e0e0"
+    ),
+    Metric = factor(Metric, levels = Metric)
+  )
+
+ggplot(robustness_df, aes(x = Metric, y = 1)) +
+  geom_tile(aes(fill = fill_color), color = "white", linewidth = 2,
+            width = 0.95, height = 0.8) +
+  geom_text(aes(label = display), fontface = "bold", size = 5, vjust = -0.2) +
+  geom_text(aes(label = Status), color = "#666666", size = 3.5, vjust = 1.5) +
+  scale_fill_identity() +
+  labs(title = "Robustness Diagnostics at a Glance") +
+  theme_void(base_size = 13) +
+  theme(
+    plot.title = element_text(face = "bold", size = 14, hjust = 0.5),
+    axis.text.x = element_text(size = 11, face = "bold"),
+    axis.text.y = element_blank()
+  )
+```
+
+## 12. Summary Dashboard
+
+A single-page overview combining the four key visualizations: (1) treated vs synthetic trajectories showing the main effect, (2) event study confirming dynamic effects and pre-trends, (3) unit weight concentration, and (4) effect heterogeneity distribution.
+
+```{r dashboard, fig.height=10, fig.width=12}
+p_dash_main <- p_main +
+  theme(plot.title = element_text(size = 11),
+        plot.subtitle = element_text(size = 9))
+
+p_dash_event <- ggplot(event_diff, aes(x = event_time)) +
+  annotate("rect", xmin = -0.5, xmax = max(event_diff$event_time) + 0.5,
+           ymin = -Inf, ymax = Inf, fill = "#cccccc", alpha = 0.2) +
+  geom_hline(yintercept = 0, color = "#888888") +
+  geom_vline(xintercept = -0.5, linetype = "dashed", color = "#666666") +
+  geom_errorbar(aes(ymin = ci_lo, ymax = ci_hi, color = period),
+                width = 0.3, linewidth = 0.5) +
+  geom_point(aes(y = diff_norm, color = period, shape = period), size = 2) +
+  scale_color_manual(values = c("Pre" = cb_palette["pre"], "Post" = cb_palette["post"])) +
+  scale_shape_manual(values = c("Pre" = 16, "Post" = 17)) +
+  scale_y_continuous(labels = dollar_format()) +
+  labs(title = "Event Study", x = "Months Relative to Event", y = "Effect ($)") +
+  theme_sdid() +
+  theme(plot.title = element_text(size = 11), plot.subtitle = element_text(size = 9))
+
+p_dash_cumul <- p_cumul +
+  theme(plot.title = element_text(size = 11),
+        plot.subtitle = element_text(size = 9))
+
+p_dash_dist <- ggplot(effect_df, aes(x = effect)) +
+  geom_histogram(aes(y = after_stat(density)), bins = 15,
+                 fill = cb_palette["treated"], color = "white", alpha = 0.7) +
+  geom_density(color = cb_palette["treated"], linewidth = 0.8) +
+  geom_vline(xintercept = coef(result),
+             color = cb_palette["synthetic"], linewidth = 0.8) +
+  scale_x_continuous(labels = dollar_format()) +
+  labs(title = "Effect Distribution", x = "Effect ($)", y = "Density") +
+  theme_sdid() +
+  theme(plot.title = element_text(size = 11), legend.position = "none")
+
+(p_dash_main | p_dash_event) / (p_dash_cumul | p_dash_dist)
+```
+
+## Summary Table
+
+```{r summary-table}
+tibble(
+  Metric = c("SDID estimate", "SC estimate", "DiD estimate", "True effect",
+             "Effect window", "Pre-treatment RMSE", "Pre-treatment MAPE",
+             "Effective donors", "Effective periods", "Effect heterogeneity (SD)",
+             "Placebo p-value", "Sample sizes"),
+  Value = c(
+    sprintf("$%.2f (95%% CI: $%.2f - $%.2f)", coef(result),
+            ci_sdid[, "Lower"], ci_sdid[, "Upper"]),
+    sprintf("$%.2f (95%% CI: $%.2f - $%.2f)", coef(result_sc),
+            ci_sc[, "Lower"], ci_sc[, "Upper"]),
+    sprintf("$%.2f (95%% CI: $%.2f - $%.2f)", coef(result_did),
+            ci_did[, "Lower"], ci_did[, "Upper"]),
+    sprintf("$%.2f", true_effect_dollar),
+    sprintf("%s to %s (%d months)", format(treatment_date, "%b %Y"),
+            format(max(dates), "%b %Y"), n_post),
+    sprintf("$%.2f", rmse),
+    sprintf("%.1f%%", mape),
+    sprintf("%d of %d controls", n_effective, n_control),
+    sprintf("%d of %d pre-periods", n_effective_t, n_pre),
+    sprintf("$%.2f", sd(effect_df$effect)),
+    sprintf("%.2f", placebo_pval),
+    sprintf("Treated = %d, Control = %d", n_treated, n_control)
+  )
+) %>%
+  knitr::kable(align = "lr")
+```

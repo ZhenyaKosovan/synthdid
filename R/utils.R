@@ -94,7 +94,7 @@ panel.matrices <- function(panel, unit = 1, time = 2, outcome = 3, treatment = 4
   treatment <- index.to.name(treatment)
   keep <- c(unit, time, outcome, treatment)
 
-  panel <- panel[keep]
+  panel <- as.data.frame(panel[keep])
   if (!is.data.frame(panel)) {
     stop("Unsupported input type `panel.`")
   }
