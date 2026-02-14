@@ -475,8 +475,8 @@ synthdid_memory_estimate <- function(N, T, K = 0,
   if (T <= 0 || is.na(T)) {
     stop("T should be positive scalar.")
   }
-  if (K <= 0 || is.na(K)) {
-    stop("K should be positive scalar.")
+  if (K < 0 || is.na(K)) {
+    stop("K should be a non-negative scalar.")
   }
   if (replications <= 0) {
     stop("replications should be positive scalar.")
