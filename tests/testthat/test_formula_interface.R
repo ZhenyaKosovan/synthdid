@@ -201,6 +201,29 @@ test_that("formula interface errors on non-formula", {
   )
 })
 
+test_that("formula parser accepts valid formulas", {
+  result <- parse_synthdid_formula(y ~ trt)
+  expect_equal(result$outcome, "y")
+  expect_equal(result$treatment, "trt")
+  expect_equal(result$covariates, character(0))
+
+  result <- parse_synthdid_formula(y ~ trt | x1 + x2)
+  expect_equal(result$outcome, "y")
+  expect_equal(result$treatment, "trt")
+  expect_equal(result$covariates, c("x1", "x2"))
+})
+
+test_that("formula parser rejects unsupported RHS forms", {
+  expect_error(parse_synthdid_formula(y ~ trt + x), "Unsupported formula syntax")
+  expect_error(parse_synthdid_formula(y ~ trt * x), "Unsupported formula syntax")
+  expect_error(parse_synthdid_formula(y ~ trt:x), "Unsupported formula syntax")
+  expect_error(parse_synthdid_formula(y ~ log(trt)), "Unsupported formula syntax")
+})
+
+test_that("formula parser rejects one-sided formula", {
+  expect_error(parse_synthdid_formula(~trt), "must have both left and right")
+})
+
 test_that("formula interface update method works", {
   data(california_prop99)
 

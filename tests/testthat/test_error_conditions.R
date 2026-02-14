@@ -295,13 +295,17 @@ test_that("synthdid_convergence_info handles missing convergence attribute", {
   expect_null(info)
 })
 
-test_that("confint errors when SE not available", {
-  Y <- matrix(rnorm(20), 4, 5)
-  estimate <- synthdid_estimate(Y, N0 = 2, T0 = 3)
+test_that("confint warns and returns NA when SE not available", {
+  data(california_prop99)
+  result <- synthdid(PacksPerCapita ~ treated,
+    data = california_prop99,
+    index = c("State", "Year"))
 
-  # No SE computed
-  attr(estimate, "se") <- NA
-  expect_error(confint(estimate))
+  # SE not computed
+  expect_warning(ci <- confint(result), "Standard error not available")
+  expect_true(all(is.na(ci)))
+  expect_equal(dim(ci), c(1, 2))
+  expect_equal(colnames(ci), c("Lower", "Upper"))
 })
 
 test_that("sparsify function errors on bad input", {

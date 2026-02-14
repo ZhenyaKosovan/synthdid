@@ -146,8 +146,10 @@
 
 ## Breaking Changes
 
-**NONE** - All changes are backward compatible. Existing code using the classic
-interface (`panel.matrices()` + `synthdid_estimate()`) works unchanged.
+* `lindsey_density_estimate()` has been removed. This internal density estimation
+  helper was previously exported but is not part of the core synthetic
+  difference-in-differences workflow. Users who depend on it should use
+  `stats::density()` or other dedicated density estimation packages instead.
 
 ## Performance Benchmarks
 
