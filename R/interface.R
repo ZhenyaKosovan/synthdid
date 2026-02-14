@@ -225,6 +225,12 @@ parse_synthdid_formula <- function(formula) {
     covariates <- character(0)
   }
 
+  # Validate: treatment must be a single variable name
+  if (length(treatment) != 1) {
+    stop("Unsupported formula syntax. Only 'outcome ~ treatment' or ",
+         "'outcome ~ treatment | covariates' is supported.")
+  }
+
   list(
     outcome = outcome,
     treatment = treatment,
