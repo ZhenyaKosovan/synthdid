@@ -16,7 +16,7 @@ if (TRUE) {
         min.decrease = min.decrease,
         max.iter = max.iter
       )),
-      c(synthdid:::synthdid.reference(setup$Y, setup$N0, setup$T0)),
+      c(synthdid.reference(setup$Y, setup$N0, setup$T0)),
       tolerance = tol
     )
   })
@@ -35,7 +35,7 @@ if (TRUE) {
         min.decrease = min.decrease,
         max.iter = max.iter
       )),
-      c(synthdid:::sc.reference(setup$Y, setup$N0, setup$T0)),
+      c(sc.reference(setup$Y, setup$N0, setup$T0)),
       tolerance = tol
     )
   })
@@ -48,7 +48,7 @@ if (TRUE) {
     setup <- panel.matrices(california_prop99)
     expect_equal(
       c(did_estimate(setup$Y, setup$N0, setup$T0)),
-      c(synthdid:::did.reference(setup$Y, setup$N0, setup$T0)),
+      c(did.reference(setup$Y, setup$N0, setup$T0)),
       tolerance = tol
     )
   })

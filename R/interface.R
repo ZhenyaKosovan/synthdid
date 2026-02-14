@@ -568,9 +568,6 @@ predict.synthdid <- function(object,
 #'
 #' @param object A synthdid object
 #' @param formula. An optional new formula
-#' Update a synthdid object
-#' @param object A synthdid object
-#' @param formula. An optional new formula
 #' @param method An optional new method
 #' @param ... Additional arguments
 #' @return An updated synthdid object

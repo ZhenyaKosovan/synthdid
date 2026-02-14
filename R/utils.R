@@ -76,7 +76,6 @@ pairwise.sum.decreasing <- function(x, y) {
 #'
 #' @export
 panel.matrices <- function(panel, unit = 1, time = 2, outcome = 3, treatment = 4, treated.last = TRUE) {
-  # TODO: add support for covariates X, i.e. could keep all other columns
   keep <- c(unit, time, outcome, treatment)
   if (!all(keep %in% 1:ncol(panel) | keep %in% colnames(panel))) {
     stop("Column identifiers should be either integer or column names in `panel`.")

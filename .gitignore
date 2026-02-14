@@ -14,6 +14,5 @@
 !IRB/*.pdf
 !old_files/*.pdf
 .Rproj.user
-docs
 src/*.o
 src/*.so

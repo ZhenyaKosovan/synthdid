@@ -232,12 +232,7 @@ synthdid_plot <- function(estimates, treated.name = "treated", control.name = "s
     )
 
 
-    T0s <- attr(est, "T0s")
-    if (!is.null(T0s)) {
-      vlines <- data.frame(xintercept = time[T0s])
-    } else {
-      vlines <- data.frame(xintercept = time[T0])
-    }
+    vlines <- data.frame(xintercept = time[T0])
 
     if (lambda.comparable) {
       height <- (max(c(obs.trajectory)) - min(c(obs.trajectory))) / lambda.plot.scale

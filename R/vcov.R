@@ -274,9 +274,9 @@ sum_normalize <- function(x) {
   if (sum(x) != 0) {
     x / sum(x)
   } else {
+    # if given a vector of zeros, return uniform weights
+    # this is fine when used in bootstrap and placebo standard errors, where it is used only for initialization
+    # for jackknife standard errors, where it isn't, we handle the case of a vector of zeros without calling this function.
     rep(1 / length(x), length(x))
   }
-  # if given a vector of zeros, return uniform weights
-  # this fine when used in bootstrap and placebo standard errors, where it is used only for initialization
-  # for jackknife standard errors, where it isn't, we handle the case of a vector of zeros without calling this function.
 }

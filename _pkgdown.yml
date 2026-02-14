@@ -2,20 +2,34 @@ url: https://zhenyakosovan.github.io/synthdid/
 template:
   bootstrap: 5
 
+navbar:
+  structure:
+    left:
+    - get-started
+    - reference
+    - articles
+    - news
+    right:
+    - search
+    - github
+  components:
+    get-started:
+      text: Get started
+      href: articles/getting-started.html
+
 articles:
-  - title: Getting Started
+  - title: Modern Interface
     navbar: ~
+    contents:
+    - getting-started
+    - alternative-visualization-for-synthdid
+    - formula-interface
+    - parallel-processing
+  - title: Outdated (Classic Interface)
     contents:
     - synthdid
     - more-plotting
-    - alternative-visualization-for-synthdid
-    - formula-interface
-  - title: Advanced Usage
-    contents:
     - advanced-topics
-    - parallel-processing
     - benchmarking-parallel
     - convergence-diagnostics
-  - title: Troubleshooting
-    contents:
     - troubleshooting
