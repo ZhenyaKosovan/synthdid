@@ -301,16 +301,11 @@ test_that("confint errors when SE not available", {
 
   # No SE computed
   attr(estimate, "se") <- NA
-  # TODO: make this error out more gracefully
-  expect_error({
-    ci <- confint(estimate)(estimate)
-  })
+  expect_error(confint(estimate))
 })
 
 test_that("sparsify function errors on bad input", {
-  expect_error({
-    synthdid:::sparsify("not a function")(c(0.1, 0.2, 0.3))
-  })
+  expect_error(synthdid:::sparsify_function("not a number"))
 })
 
 test_that("errors are informative", {

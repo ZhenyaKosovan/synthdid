@@ -1,6 +1,6 @@
 Package: synthdid
 Title: Synthetic Difference-in-Difference Estimation
-Version: 1.0.0
+Version: 2.0.0
 Author: Dmitry Arkhangelsky [aut]
         Susan Athey [aut]
         David A. Hirshberg [aut, cre]

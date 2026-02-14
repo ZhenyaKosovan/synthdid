@@ -1,4 +1,4 @@
-# synthdid 1.1.0 (Development Version)
+# synthdid 2.0.0
 
 ## Major New Features
 
@@ -276,34 +276,10 @@ result <- synthdid(PacksPerCapita ~ treated,
 
 ## Notes for Next Release
 
-### Version Number
-
-This version (1.1.0) represents a **minor** version increment with major new features:
-
-* ✅ New functionality (formula interface)
-* ✅ Performance improvements (RcppArmadillo)
-* ✅ New features (thread management)
-* ✅ 100% backward compatibility (no breaking changes)
-
-Consider version 2.0.0 if the formula interface is to be positioned as the
-primary interface going forward.
-
 ### Before CRAN Submission
 
-- [ ] Update `DESCRIPTION` version to 1.1.0
 - [ ] Final R CMD check (should show 2 acceptable NOTEs)
 - [ ] Test on multiple platforms (rhub, winbuilder)
 - [ ] Update installation instructions if needed
 - [ ] Create GitHub release
 - [ ] Update pkgdown website
-
-### CRAN Comments (for submission)
-
-This release introduces major performance improvements (3-8x speedup) and a
-modern formula-based interface while maintaining 100% backward compatibility.
-All 172 tests pass. The package includes automatic thread management for
-optimal parallel processing performance.
-
-Two NOTEs are expected:
-1. C++11 specification (required by RcppArmadillo dependency)
-2. License stub format (cosmetic, existing in previous version)
