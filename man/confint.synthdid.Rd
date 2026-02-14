@@ -4,10 +4,12 @@
 \alias{confint.synthdid}
 \title{Compute confidence intervals for synthdid object}
 \usage{
-\method{confint}{synthdid}(object, level = 0.95, ...)
+\method{confint}{synthdid}(object, parm, level = 0.95, ...)
 }
 \arguments{
 \item{object}{A synthdid object}
+
+\item{parm}{Ignored (included for S3 generic compatibility)}
 
 \item{level}{Confidence level (default: 0.95)}
 

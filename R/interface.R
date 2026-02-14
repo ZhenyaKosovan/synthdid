@@ -372,6 +372,7 @@ coef.synthdid <- function(object, ...) {
 
 #' Compute confidence intervals for synthdid object
 #' @param object A synthdid object
+#' @param parm Ignored (included for S3 generic compatibility)
 #' @param level Confidence level (default: 0.95)
 #' @param ... Additional arguments (currently ignored)
 #' @return A matrix with lower and upper confidence bounds
@@ -388,7 +389,7 @@ coef.synthdid <- function(object, ...) {
 #' confint(result, level = 0.90)
 #' }
 #' @export
-confint.synthdid <- function(object, level = 0.95, ...) {
+confint.synthdid <- function(object, parm, level = 0.95, ...) {
   tau <- coef(object)
   se <- attr(object, "se")
   if (is.null(se) || is.na(se)) {
