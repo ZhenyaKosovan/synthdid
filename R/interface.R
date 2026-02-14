@@ -123,13 +123,16 @@ synthdid <- function(formula,
     stop("Variables not found in data: ", paste(missing_vars, collapse = ", "))
   }
 
-  # Create panel structure
+  # Create panel structure (suppress deprecation warning for internal use)
   panel_data <- data[, c(unit_var, time_var, outcome_var, treatment_var), drop = FALSE]
-  setup <- panel.matrices(panel_data,
-    unit = unit_var,
-    time = time_var,
-    outcome = outcome_var,
-    treatment = treatment_var
+  setup <- withCallingHandlers(
+    panel.matrices(panel_data,
+      unit = unit_var,
+      time = time_var,
+      outcome = outcome_var,
+      treatment = treatment_var
+    ),
+    lifecycle_warning_deprecated = function(cnd) invokeRestart("muffleWarning")
   )
 
   # Handle covariates if present
@@ -138,40 +141,46 @@ synthdid <- function(formula,
     # Extract covariate matrices
     X_list <- lapply(covariate_vars, function(cov) {
       cov_panel <- data[, c(unit_var, time_var, cov, treatment_var), drop = FALSE]
-      cov_setup <- panel.matrices(cov_panel,
-        unit = unit_var,
-        time = time_var,
-        outcome = cov,
-        treatment = treatment_var
+      cov_setup <- withCallingHandlers(
+        panel.matrices(cov_panel,
+          unit = unit_var,
+          time = time_var,
+          outcome = cov,
+          treatment = treatment_var
+        ),
+        lifecycle_warning_deprecated = function(cnd) invokeRestart("muffleWarning")
       )
       cov_setup$Y
     })
     X <- array(unlist(X_list), dim = c(dim(setup$Y), length(covariate_vars)))
   }
 
-  # Call appropriate estimator
-  estimate <- switch(method,
-    "synthdid" = synthdid_estimate(setup$Y, setup$N0, setup$T0,
-      X = X,
-      estimate_se = se,
-      se_method = se_method,
-      se_replications = se_replications,
-      ...
+  # Call appropriate estimator (suppress deprecation warning for internal use)
+  estimate <- withCallingHandlers(
+    switch(method,
+      "synthdid" = synthdid_estimate(setup$Y, setup$N0, setup$T0,
+        X = X,
+        estimate_se = se,
+        se_method = se_method,
+        se_replications = se_replications,
+        ...
+      ),
+      "sc" = sc_estimate(setup$Y, setup$N0, setup$T0,
+        X = X,
+        estimate_se = se,
+        se_method = se_method,
+        se_replications = se_replications,
+        ...
+      ),
+      "did" = did_estimate(setup$Y, setup$N0, setup$T0,
+        X = X,
+        estimate_se = se,
+        se_method = se_method,
+        se_replications = se_replications,
+        ...
+      )
     ),
-    "sc" = sc_estimate(setup$Y, setup$N0, setup$T0,
-      X = X,
-      estimate_se = se,
-      se_method = se_method,
-      se_replications = se_replications,
-      ...
-    ),
-    "did" = did_estimate(setup$Y, setup$N0, setup$T0,
-      X = X,
-      estimate_se = se,
-      se_method = se_method,
-      se_replications = se_replications,
-      ...
-    )
+    lifecycle_warning_deprecated = function(cnd) invokeRestart("muffleWarning")
   )
 
   # Enrich the object with formula interface attributes
@@ -564,7 +573,10 @@ predict.synthdid <- function(object,
     return(treated_outcomes)
   } else {
     # Treatment effect by period (effect curve)
-    return(synthdid_effect_curve(object))
+    return(withCallingHandlers(
+      synthdid_effect_curve(object),
+      lifecycle_warning_deprecated = function(cnd) invokeRestart("muffleWarning")
+    ))
   }
 }
 

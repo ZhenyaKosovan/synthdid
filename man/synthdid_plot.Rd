@@ -2,11 +2,7 @@
 % Please edit documentation in R/plot.R
 \name{synthdid_plot}
 \alias{synthdid_plot}
-\title{Plots treated and synthetic control trajectories and overlays a 2x2 diff-in-diff diagram of our estimator.
-In this overlay, the treatment effect is indicated by an arrow.
-The weights lambda defining our synthetic pre-treatment time period are plotted below.
-If a list of estimates is passed, plots all of them. By default, does this in different facets.
-To overlay estimates in the same facet, indicate a facet for each estimator in the argument 'facet'.}
+\title{Plots treated and synthetic control trajectories and overlays a 2x2 diff-in-diff diagram of our estimator.}
 \usage{
 synthdid_plot(
   estimates,
@@ -109,9 +105,18 @@ with alpha multiplied by the corresponding element of alpha.multiplier. Defaults
 A ggplot2 object that can be further customized or displayed.
 }
 \description{
+\ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#deprecated}{\figure{lifecycle-deprecated.svg}{options: alt='[Deprecated]'}}}{\strong{[Deprecated]}}
+
+\code{synthdid_plot()} was deprecated in synthdid 2.0.0.
+Use \code{plot()} on a synthdid object instead.
+
+In this overlay, the treatment effect is indicated by an arrow.
+The weights lambda defining our synthetic pre-treatment time period are plotted below.
+If a list of estimates is passed, plots all of them. By default, does this in different facets.
+To overlay estimates in the same facet, indicate a facet for each estimator in the argument 'facet'.
+
 For SC estimates, i.e., if lambda is a vector of zeros, plots the trajectories and SC estimate of the effect, but no diagram.
-}
-\details{
+
 Requires ggplot2
 Due to differences between ggplot and ggplotly, this will warn about an unknown aesthetic frame.
 }
@@ -141,3 +146,4 @@ p <- synthdid_plot(tau.hat, trajectory.alpha = 0.7)
 p + ggplot2::ggtitle("California Proposition 99 Analysis")
 }
 }
+\keyword{internal}

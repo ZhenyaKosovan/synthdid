@@ -22,7 +22,8 @@ Imports:
     ggplot2,
     grid,
     furrr,
-    future
+    future,
+    lifecycle
 LinkingTo:
     Rcpp,
     RcppArmadillo
@@ -46,7 +47,8 @@ Suggests:
     xtable,
     RhpcBLASctl,
     gifski,
-    patchwork
+    patchwork,
+    withr
 URL: https://zhenyakosovan.github.io/synthdid/, https://github.com/ZhenyaKosovan/synthdid
 BugReports: https://github.com/ZhenyaKosovan/synthdid/issues
 Config/testthat/edition: 3

@@ -1,4 +1,5 @@
 test_that("panel.matrices works as expected", {
+  withr::local_options(lifecycle_verbosity = "quiet")
   data("california_prop99")
   panel <- california_prop99
   panel.shuffled <- panel[sample(1:nrow(panel)), ]

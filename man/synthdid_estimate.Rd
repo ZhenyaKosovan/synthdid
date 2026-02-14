@@ -87,6 +87,11 @@ An average treatment effect estimate with 'weights' and 'setup' attached as attr
 If estimate_se = TRUE, attributes 'se', 'se_method', and 'se_status' reflect the requested standard error computation.
 }
 \description{
+\ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#deprecated}{\figure{lifecycle-deprecated.svg}{options: alt='[Deprecated]'}}}{\strong{[Deprecated]}}
+
+\code{synthdid_estimate()} was deprecated in synthdid 2.0.0 in favour of the
+formula interface \code{\link[=synthdid]{synthdid()}}.
+
 See 'Synthetic Difference in Differences' by Arkhangelsky et al. This implements Algorithm 1.
 }
 \examples{
@@ -120,3 +125,4 @@ tau.hat.custom <- synthdid_estimate(setup$Y, setup$N0, setup$T0,
 )
 }
 }
+\keyword{internal}

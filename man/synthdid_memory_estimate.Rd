@@ -27,6 +27,11 @@ synthdid_memory_estimate(
 List with memory estimates in GB for different components
 }
 \description{
+\ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#deprecated}{\figure{lifecycle-deprecated.svg}{options: alt='[Deprecated]'}}}{\strong{[Deprecated]}}
+
+\code{synthdid_memory_estimate()} was deprecated in synthdid 2.0.0.
+Use the formula interface with \code{\link[=synthdid]{synthdid()}} instead.
+
 Provides rough estimates of peak memory usage for different synthdid operations.
 Useful for assessing feasibility of large-scale computations before running them.
 }
@@ -39,3 +44,4 @@ synthdid_memory_estimate(N = 39, T = 31, K = 0, replications = 1000)
 synthdid_memory_estimate(N = 1000, T = 100, K = 50, replications = 1000)
 }
 }
+\keyword{internal}

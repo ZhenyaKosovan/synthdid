@@ -324,6 +324,7 @@ test_that("formula interface with small dataset", {
 })
 
 test_that("formula interface preserves convergence information", {
+  withr::local_options(lifecycle_verbosity = "quiet")
   data(california_prop99)
 
   result <- synthdid(PacksPerCapita ~ treated,

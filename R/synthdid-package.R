@@ -8,8 +8,6 @@
 #' and zero otherwise, with N0 denoting the number of control units and T0 the number of observation times
 #' before onset of treatment. This applies, in particular, to the case of a single treated unit or treated period.
 #'
-#' This package is currently in beta and the functionality and interface is subject to change.
-#'
 #' Some helpful links for getting started:
 #'
 #' * The [R package documentation](https://synth-inference.github.io/synthdid/) contains usage examples and method reference.
@@ -20,17 +18,18 @@
 #' \donttest{
 #' # Estimate the effect of California Proposition 99 on cigarette consumption
 #' data("california_prop99")
-#' setup <- panel.matrices(california_prop99)
-#' tau.hat <- synthdid_estimate(setup$Y, setup$N0, setup$T0)
-#' se <- sqrt(vcov(tau.hat, method = "placebo"))
-#' sprintf("point estimate: %1.2f", tau.hat)
-#' sprintf("95%% CI (%1.2f, %1.2f)", tau.hat - 1.96 * se, tau.hat + 1.96 * se)
-#' plot(tau.hat)
+#' fit <- synthdid(PacksPerCapita ~ treated,
+#'   data = california_prop99,
+#'   index = c("State", "Year")
+#' )
+#' summary(fit)
+#' plot(fit)
 #' }
 #'
 #' @keywords internal
 #' @useDynLib synthdid, .registration = TRUE
 ## usethis namespace: start
+#' @importFrom lifecycle deprecated
 #' @importFrom Rcpp sourceCpp
 ## usethis namespace: end
 "_PACKAGE"

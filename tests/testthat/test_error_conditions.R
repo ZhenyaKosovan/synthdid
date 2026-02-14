@@ -2,6 +2,7 @@
 # Addresses SUGGESTIONS.md Issue #8: Insufficient tests for error conditions
 
 test_that("synthdid_estimate errors on non-numeric Y", {
+  withr::local_options(lifecycle_verbosity = "quiet")
   Y <- matrix(c("a", "b", "c", "d"), 2, 2)
 
   expect_error({
@@ -12,6 +13,7 @@ test_that("synthdid_estimate errors on non-numeric Y", {
 })
 
 test_that("synthdid_estimate errors on non-matrix Y", {
+  withr::local_options(lifecycle_verbosity = "quiet")
   Y <- c(1, 2, 3, 4)
 
   expect_error({
@@ -20,6 +22,7 @@ test_that("synthdid_estimate errors on non-matrix Y", {
 })
 
 test_that("synthdid_estimate errors on N0 >= nrow(Y)", {
+  withr::local_options(lifecycle_verbosity = "quiet")
   Y <- matrix(1:10, 5, 2)
 
   expect_error({
@@ -28,6 +31,7 @@ test_that("synthdid_estimate errors on N0 >= nrow(Y)", {
 })
 
 test_that("synthdid_estimate errors on T0 >= ncol(Y)", {
+  withr::local_options(lifecycle_verbosity = "quiet")
   Y <- matrix(1:10, 2, 5)
 
   expect_error({
@@ -36,6 +40,7 @@ test_that("synthdid_estimate errors on T0 >= ncol(Y)", {
 })
 
 test_that("synthdid_estimate errors on negative N0", {
+  withr::local_options(lifecycle_verbosity = "quiet")
   Y <- matrix(1:10, 5, 2)
 
   expect_error({
@@ -44,6 +49,7 @@ test_that("synthdid_estimate errors on negative N0", {
 })
 
 test_that("synthdid_estimate errors on negative T0", {
+  withr::local_options(lifecycle_verbosity = "quiet")
   Y <- matrix(1:10, 2, 5)
 
   expect_error({
@@ -52,6 +58,7 @@ test_that("synthdid_estimate errors on negative T0", {
 })
 
 test_that("synthdid_estimate errors on zero N0", {
+  withr::local_options(lifecycle_verbosity = "quiet")
   Y <- matrix(1:10, 5, 2)
 
   expect_error({
@@ -60,6 +67,7 @@ test_that("synthdid_estimate errors on zero N0", {
 })
 
 test_that("synthdid_estimate errors on zero T0", {
+  withr::local_options(lifecycle_verbosity = "quiet")
   Y <- matrix(1:10, 2, 5)
 
   expect_error({
@@ -68,6 +76,7 @@ test_that("synthdid_estimate errors on zero T0", {
 })
 
 test_that("synthdid_estimate handles NA values", {
+  withr::local_options(lifecycle_verbosity = "quiet")
   Y <- matrix(1:10, 2, 5)
   Y[1, 1] <- NA
 
@@ -77,6 +86,7 @@ test_that("synthdid_estimate handles NA values", {
 })
 
 test_that("synthdid_estimate handles Inf values", {
+  withr::local_options(lifecycle_verbosity = "quiet")
   Y <- matrix(1:10, 2, 5)
   Y[1, 1] <- Inf
 
@@ -87,6 +97,7 @@ test_that("synthdid_estimate handles Inf values", {
 })
 
 test_that("synthdid_estimate errors on mismatched covariate dimensions", {
+  withr::local_options(lifecycle_verbosity = "quiet")
   Y <- matrix(rnorm(20), 4, 5)
   X <- array(rnorm(15), dim = c(3, 5, 1)) # Wrong number of rows
 
@@ -96,6 +107,7 @@ test_that("synthdid_estimate errors on mismatched covariate dimensions", {
 })
 
 test_that("synthdid_estimate errors on mismatched covariate periods", {
+  withr::local_options(lifecycle_verbosity = "quiet")
   Y <- matrix(rnorm(20), 4, 5)
   X <- array(rnorm(16), dim = c(4, 4, 1)) # Wrong number of columns
 
@@ -106,6 +118,7 @@ test_that("synthdid_estimate errors on mismatched covariate periods", {
 
 
 test_that("panel.matrices errors on non-data.frame", {
+  withr::local_options(lifecycle_verbosity = "quiet")
   panel <- matrix(1:20, 5, 4)
 
   expect_error({
@@ -114,6 +127,7 @@ test_that("panel.matrices errors on non-data.frame", {
 })
 
 test_that("panel.matrices errors on unbalanced panel (missing observation)", {
+  withr::local_options(lifecycle_verbosity = "quiet")
   data(california_prop99)
   panel_unbalanced <- california_prop99[-10, ] # Remove one observation
 
@@ -123,6 +137,7 @@ test_that("panel.matrices errors on unbalanced panel (missing observation)", {
 })
 
 test_that("panel.matrices errors on non-simultaneous treatment", {
+  withr::local_options(lifecycle_verbosity = "quiet")
   data(california_prop99)
   panel_mod <- california_prop99
 
@@ -135,6 +150,7 @@ test_that("panel.matrices errors on non-simultaneous treatment", {
 })
 
 test_that("panel.matrices errors when treatment starts in first period", {
+  withr::local_options(lifecycle_verbosity = "quiet")
   panel <- data.frame(
     unit = rep(c("A", "B"), each = 3),
     time = rep(1:3, times = 2),
@@ -151,6 +167,7 @@ test_that("panel.matrices errors when treatment starts in first period", {
 })
 
 test_that("vcov errors on unknown method", {
+  withr::local_options(lifecycle_verbosity = "quiet")
   set.seed(123)
   Y <- matrix(rnorm(30), 5, 6)
   Y[4:5, 4:6] <- Y[4:5, 4:6] + 2
@@ -162,6 +179,7 @@ test_that("vcov errors on unknown method", {
 })
 
 test_that("placebo_se errors when N0 <= N1", {
+  withr::local_options(lifecycle_verbosity = "quiet")
   set.seed(123)
   Y <- matrix(rnorm(30), 5, 6)
   Y[4:5, 4:6] <- Y[4:5, 4:6] + 2
@@ -176,6 +194,7 @@ test_that("placebo_se errors when N0 <= N1", {
 })
 
 test_that("sc_weight_fw errors on non-matrix Y", {
+  withr::local_options(lifecycle_verbosity = "quiet")
   Y <- c(1, 2, 3, 4)
 
   expect_error({
@@ -184,6 +203,7 @@ test_that("sc_weight_fw errors on non-matrix Y", {
 })
 
 test_that("contract3_cpp errors on non-3D array", {
+  withr::local_options(lifecycle_verbosity = "quiet")
   X <- matrix(1:12, 3, 4)
   v <- c(0.5, 0.5)
 
@@ -196,6 +216,7 @@ test_that("contract3_cpp errors on non-3D array", {
 })
 
 test_that("contract3_cpp errors on mismatched vector length", {
+  withr::local_options(lifecycle_verbosity = "quiet")
   X <- array(1:24, dim = c(3, 4, 2))
   v <- c(0.5, 0.3, 0.2) # Length 3, should be 2
 
@@ -208,6 +229,7 @@ test_that("contract3_cpp errors on mismatched vector length", {
 })
 
 test_that("synthdid_controls errors on non-estimate input", {
+  withr::local_options(lifecycle_verbosity = "quiet")
   expect_error({
     synthdid_controls("not an estimate")
   })
@@ -215,6 +237,7 @@ test_that("synthdid_controls errors on non-estimate input", {
 
 
 test_that("negative noise.level parameter errors", {
+  withr::local_options(lifecycle_verbosity = "quiet")
   Y <- matrix(rnorm(20), 4, 5)
 
   expect_error({
@@ -223,6 +246,7 @@ test_that("negative noise.level parameter errors", {
 })
 
 test_that("negative max.iter errors", {
+  withr::local_options(lifecycle_verbosity = "quiet")
   Y <- matrix(rnorm(20), 4, 5)
 
   # Should handle gracefully or error
@@ -233,6 +257,7 @@ test_that("negative max.iter errors", {
 
 
 test_that("formula interface errors on missing treatment variable", {
+  withr::local_options(lifecycle_verbosity = "quiet")
   data(california_prop99)
   df <- california_prop99[, c("State", "Year", "PacksPerCapita")] # No 'treated'
 
@@ -248,6 +273,7 @@ test_that("formula interface errors on missing treatment variable", {
 })
 
 test_that("formula interface errors on non-binary treatment", {
+  withr::local_options(lifecycle_verbosity = "quiet")
   data(california_prop99)
   df <- california_prop99
   df$treated <- df$treated + 0.5 # Make it non-binary
@@ -260,6 +286,7 @@ test_that("formula interface errors on non-binary treatment", {
 })
 
 test_that("synthdid_memory_estimate errors on negative inputs", {
+  withr::local_options(lifecycle_verbosity = "quiet")
   expect_error({
     synthdid_memory_estimate(N = -10, T = 50)
   })
@@ -278,6 +305,7 @@ test_that("synthdid_memory_estimate errors on negative inputs", {
 })
 
 test_that("synthdid_convergence_info handles missing convergence attribute", {
+  withr::local_options(lifecycle_verbosity = "quiet")
   # Create estimate without running through normal flow
   Y <- matrix(rnorm(20), 4, 5)
   estimate <- synthdid_estimate(Y, N0 = 2, T0 = 3)
@@ -296,6 +324,7 @@ test_that("synthdid_convergence_info handles missing convergence attribute", {
 })
 
 test_that("confint warns and returns NA when SE not available", {
+  withr::local_options(lifecycle_verbosity = "quiet")
   data(california_prop99)
   result <- synthdid(PacksPerCapita ~ treated,
     data = california_prop99,
@@ -309,10 +338,12 @@ test_that("confint warns and returns NA when SE not available", {
 })
 
 test_that("sparsify function errors on bad input", {
+  withr::local_options(lifecycle_verbosity = "quiet")
   expect_error(synthdid:::sparsify_function("not a number"))
 })
 
 test_that("errors are informative", {
+  withr::local_options(lifecycle_verbosity = "quiet")
   Y <- matrix(1:10, 5, 2)
 
   # Check that error messages are helpful

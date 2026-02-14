@@ -13,21 +13,12 @@ synthdid_converged(estimate)
 Logical indicating whether optimization converged
 }
 \description{
+\ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#deprecated}{\figure{lifecycle-deprecated.svg}{options: alt='[Deprecated]'}}}{\strong{[Deprecated]}}
+
+\code{synthdid_converged()} was deprecated in synthdid 2.0.0.
+Convergence status is shown in the \code{print()} output of formula interface results.
+
 Lightweight function to check if the optimization converged properly.
 Uses information already computed during estimation (zero overhead).
 }
-\examples{
-\donttest{
-data(california_prop99)
-setup <- panel.matrices(california_prop99)
-tau.hat <- synthdid_estimate(setup$Y, setup$N0, setup$T0)
-
-# Quick convergence check
-synthdid_converged(tau.hat)
-
-# If FALSE, get more details
-if (!synthdid_converged(tau.hat)) {
-  synthdid_convergence_info(tau.hat)
-}
-}
-}
+\keyword{internal}

@@ -2,8 +2,7 @@
 % Please edit documentation in R/synthdid.R
 \name{did_estimate}
 \alias{did_estimate}
-\title{synthdid_estimate for diff-in-diff estimates.
-Takes all the same parameters, but by default, passes options to use the diff-in-diff estimator}
+\title{Difference-in-differences estimate}
 \usage{
 did_estimate(Y, N0, T0, ...)
 }
@@ -20,26 +19,12 @@ did_estimate(Y, N0, T0, ...)
 an object like that returned by synthdid_estimate
 }
 \description{
-synthdid_estimate for diff-in-diff estimates.
-Takes all the same parameters, but by default, passes options to use the diff-in-diff estimator
-}
-\examples{
-\donttest{
-# Estimate treatment effect using difference-in-differences
-data(california_prop99)
-setup <- panel.matrices(california_prop99)
+\ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#deprecated}{\figure{lifecycle-deprecated.svg}{options: alt='[Deprecated]'}}}{\strong{[Deprecated]}}
 
-# DID estimate
-tau.did <- did_estimate(setup$Y, setup$N0, setup$T0)
-print(tau.did)
+\code{did_estimate()} was deprecated in synthdid 2.0.0.
+Use \code{synthdid(formula, data, method = "did")} instead.
 
-# Compare all three estimators
-tau.sc <- sc_estimate(setup$Y, setup$N0, setup$T0)
-tau.sdid <- synthdid_estimate(setup$Y, setup$N0, setup$T0)
-estimates <- list(did = tau.did, sc = tau.sc, sdid = tau.sdid)
-sapply(estimates, function(x) x)
-
-# Visualize the differences
-# synthdid_plot(estimates)
+Takes all the same parameters as \code{\link[=synthdid_estimate]{synthdid_estimate()}}, but by default,
+passes options to use the diff-in-diff estimator.
 }
-}
+\keyword{internal}

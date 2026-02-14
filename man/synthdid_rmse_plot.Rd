@@ -2,9 +2,7 @@
 % Please edit documentation in R/plot.R
 \name{synthdid_rmse_plot}
 \alias{synthdid_rmse_plot}
-\title{A diagnostic plot for sc.weight.fw.covariates. Plots the objective function, regularized RMSE,
-as a function of the number of Frank-Wolfe / Gradient steps taken.
-Requires ggplot2}
+\title{A diagnostic plot for sc.weight.fw.covariates.}
 \usage{
 synthdid_rmse_plot(estimates)
 }
@@ -15,15 +13,13 @@ synthdid_rmse_plot(estimates)
 A ggplot2 object showing the convergence diagnostics.
 }
 \description{
-A diagnostic plot for sc.weight.fw.covariates. Plots the objective function, regularized RMSE,
+\ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#deprecated}{\figure{lifecycle-deprecated.svg}{options: alt='[Deprecated]'}}}{\strong{[Deprecated]}}
+
+\code{synthdid_rmse_plot()} was deprecated in synthdid 2.0.0.
+Use the formula interface with \code{\link[=synthdid]{synthdid()}} instead.
+
+Plots the objective function, regularized RMSE,
 as a function of the number of Frank-Wolfe / Gradient steps taken.
 Requires ggplot2
 }
-\examples{
-\donttest{
-data(california_prop99)
-setup <- panel.matrices(california_prop99)
-tau.hat <- synthdid_estimate(setup$Y, setup$N0, setup$T0)
-synthdid_rmse_plot(tau.hat)
-}
-}
+\keyword{internal}

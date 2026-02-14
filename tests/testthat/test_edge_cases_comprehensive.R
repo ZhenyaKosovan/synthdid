@@ -1,5 +1,6 @@
 # Comprehensive Edge Case Tests for synthdid package
 test_that("minimal control units (N0=1) with multiple periods", {
+  withr::local_options(lifecycle_verbosity = "quiet")
   set.seed(123)
   Y <- matrix(rnorm(30), nrow = 3, ncol = 10) # 1 control, 2 treated, 10 periods
   Y[2:3, 6:10] <- Y[2:3, 6:10] + 5 # Treatment effect
@@ -13,6 +14,7 @@ test_that("minimal control units (N0=1) with multiple periods", {
 })
 
 test_that("minimal pre-treatment periods (T0=1) with multiple units", {
+  withr::local_options(lifecycle_verbosity = "quiet")
   set.seed(123)
   Y <- matrix(rnorm(100), nrow = 10, ncol = 10) # 10 units, 10 periods
   Y[8:10, 2:10] <- Y[8:10, 2:10] + 3 # Treatment effect
@@ -23,6 +25,7 @@ test_that("minimal pre-treatment periods (T0=1) with multiple units", {
 })
 
 test_that("no treated units after treatment (T0=T-1)", {
+  withr::local_options(lifecycle_verbosity = "quiet")
   set.seed(456)
   Y <- matrix(rnorm(30), nrow = 5, ncol = 6)
   # Treatment in last period only
@@ -36,6 +39,7 @@ test_that("no treated units after treatment (T0=T-1)", {
 })
 
 test_that("all units treated (N0=N-1)", {
+  withr::local_options(lifecycle_verbosity = "quiet")
   set.seed(789)
   Y <- matrix(rnorm(30), nrow = 5, ncol = 6)
   # Only 1 control unit
@@ -49,6 +53,7 @@ test_that("all units treated (N0=N-1)", {
 })
 
 test_that("square matrices work (N=T)", {
+  withr::local_options(lifecycle_verbosity = "quiet")
   set.seed(111)
   Y <- matrix(rnorm(100), nrow = 10, ncol = 10)
   Y[8:10, 7:10] <- Y[8:10, 7:10] + 5
@@ -61,6 +66,7 @@ test_that("square matrices work (N=T)", {
 })
 
 test_that("very small matrices (3x3)", {
+  withr::local_options(lifecycle_verbosity = "quiet")
   Y <- matrix(
     c(
       1, 2, 1,
@@ -78,6 +84,7 @@ test_that("very small matrices (3x3)", {
 })
 
 test_that("constant pre-treatment data (zero noise.level)", {
+  withr::local_options(lifecycle_verbosity = "quiet")
   # All pre-treatment values are identical
   Y <- matrix(
     c(
@@ -98,6 +105,7 @@ test_that("constant pre-treatment data (zero noise.level)", {
 })
 
 test_that("zero variance in some rows", {
+  withr::local_options(lifecycle_verbosity = "quiet")
   set.seed(222)
   Y <- matrix(rnorm(50), nrow = 5, ncol = 10)
   # Make one control unit constant
@@ -114,6 +122,7 @@ test_that("zero variance in some rows", {
 })
 
 test_that("zero variance in some columns", {
+  withr::local_options(lifecycle_verbosity = "quiet")
   set.seed(333)
   Y <- matrix(rnorm(50), nrow = 5, ncol = 10)
   # Make one pre-treatment period constant across all units
@@ -131,6 +140,7 @@ test_that("zero variance in some columns", {
 
 
 test_that("very large values in data", {
+  withr::local_options(lifecycle_verbosity = "quiet")
   set.seed(555)
   Y <- matrix(rnorm(50, mean = 1e6, sd = 1e5), nrow = 5, ncol = 10)
   # Treatment effect
@@ -144,6 +154,7 @@ test_that("very large values in data", {
 })
 
 test_that("very small values in data", {
+  withr::local_options(lifecycle_verbosity = "quiet")
   set.seed(666)
   Y <- matrix(rnorm(50, mean = 1e-6, sd = 1e-7), nrow = 5, ncol = 10)
   # Treatment effect
@@ -157,6 +168,7 @@ test_that("very small values in data", {
 })
 
 test_that("zero treatment effect (placebo test)", {
+  withr::local_options(lifecycle_verbosity = "quiet")
   set.seed(999)
   Y <- matrix(rnorm(100), nrow = 10, ncol = 10)
   # No treatment effect added
@@ -170,6 +182,7 @@ test_that("zero treatment effect (placebo test)", {
 })
 
 test_that("perfect parallel trends (DID case)", {
+  withr::local_options(lifecycle_verbosity = "quiet")
   # Create data with perfect parallel trends
   Y <- outer(1:5, 1:10, function(i, j) i + j)
   # Add treatment effect to last 2 units in last 4 periods
@@ -184,6 +197,7 @@ test_that("perfect parallel trends (DID case)", {
 })
 
 test_that("heterogeneous treatment effects across units", {
+  withr::local_options(lifecycle_verbosity = "quiet")
   set.seed(1010)
   Y <- matrix(rnorm(100), nrow = 10, ncol = 10)
 
@@ -201,6 +215,7 @@ test_that("heterogeneous treatment effects across units", {
 })
 
 test_that("with row and column names", {
+  withr::local_options(lifecycle_verbosity = "quiet")
   set.seed(1111)
   Y <- matrix(rnorm(60), nrow = 6, ncol = 10)
   rownames(Y) <- paste0("Unit_", 1:6)

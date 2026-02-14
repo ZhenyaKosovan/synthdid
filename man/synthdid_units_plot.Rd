@@ -2,10 +2,7 @@
 % Please edit documentation in R/plot.R
 \name{synthdid_units_plot}
 \alias{synthdid_units_plot}
-\title{Plots unit by unit difference-in-differences. Dot size indicates the weights omega_i
-used in the average that yields our treatment effect estimate.
-This estimate and endpoints of a 95\% CI are plotted as horizontal lines.
-Requires ggplot2}
+\title{Plots unit by unit difference-in-differences.}
 \usage{
 synthdid_units_plot(
   estimates,
@@ -31,25 +28,14 @@ Defaults to 'jackknife' for speed. If 'none', don't plot a CI.}
 A ggplot2 object showing unit-level treatment effect estimates.
 }
 \description{
-Plots unit by unit difference-in-differences. Dot size indicates the weights omega_i
+\ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#deprecated}{\figure{lifecycle-deprecated.svg}{options: alt='[Deprecated]'}}}{\strong{[Deprecated]}}
+
+\code{synthdid_units_plot()} was deprecated in synthdid 2.0.0.
+Use the formula interface with \code{\link[=synthdid]{synthdid()}} instead.
+
+Dot size indicates the weights omega_i
 used in the average that yields our treatment effect estimate.
 This estimate and endpoints of a 95\% CI are plotted as horizontal lines.
 Requires ggplot2
 }
-\examples{
-\donttest{
-data(california_prop99)
-setup <- panel.matrices(california_prop99)
-tau.hat <- synthdid_estimate(setup$Y, setup$N0, setup$T0)
-
-# Plot all units
-synthdid_units_plot(tau.hat)
-
-# Plot specific units only
-# synthdid_units_plot(tau.hat, units = rownames(setup$Y)[1:10])
-
-# Compare multiple estimates
-tau.sc <- sc_estimate(setup$Y, setup$N0, setup$T0)
-synthdid_units_plot(list(tau.sc, tau.hat))
-}
-}
+\keyword{internal}

@@ -69,27 +69,19 @@ vcov.synthdid_estimate <- function(
   matrix(se^2)
 }
 
-#' Calculate the standard error of a synthetic diff in diff estimate. Deprecated. Use vcov.synthdid_estimate.
+#' Calculate the standard error of a synthetic diff in diff estimate.
+#'
+#' @description
+#' `r lifecycle::badge("deprecated")`
+#'
+#' `synthdid_se()` was deprecated in synthdid 2.0.0. Use [vcov()] instead.
+#'
 #' @param ... Any valid arguments for vcov.synthdid_estimate
 #' @return A scalar standard error estimate.
-#' @examples
-#' \donttest{
-#' # This function is deprecated. Use sqrt(vcov(...)) instead.
-#' data(california_prop99)
-#' setup <- panel.matrices(california_prop99)
-#' tau.hat <- synthdid_estimate(setup$Y, setup$N0, setup$T0)
-#'
-#' # Deprecated approach (still works)
-#' se.old <- synthdid_se(tau.hat, method = "jackknife")
-#'
-#' # Preferred approach
-#' se.new <- sqrt(vcov(tau.hat, method = "jackknife"))
-#'
-#' # Both give the same result
-#' all.equal(se.old, se.new)
-#' }
+#' @keywords internal
 #' @export synthdid_se
 synthdid_se <- function(...) {
+  lifecycle::deprecate_soft("2.0.0", "synthdid_se()", "vcov()")
   sqrt(vcov(...))
 }
 
@@ -126,21 +118,24 @@ bootstrap_se <- function(estimate, replications) {
           weights.boot <- weights
           weights.boot$omega <- sum_normalize(weights$omega[sorted_ind[sorted_ind <= setup$N0]])
 
-          return(as.vector(synthdid_estimate(
-            Y = setup$Y[sorted_ind, ],
-            N0 = sum(sorted_ind <= setup$N0),
-            T0 = setup$T0,
-            X = setup$X[sorted_ind, , ],
-            weights = weights.boot,
-            zeta.omega = opts$zeta.omega,
-            zeta.lambda = opts$zeta.lambda,
-            omega.intercept = opts$omega.intercept,
-            lambda.intercept = opts$lambda.intercept,
-            update.omega = opts$update.omega,
-            update.lambda = opts$update.lambda,
-            min.decrease = opts$min.decrease,
-            max.iter = opts$max.iter,
-            suppress_convergence_warning = opts$suppress_convergence_warning
+          return(as.vector(withCallingHandlers(
+            synthdid_estimate(
+              Y = setup$Y[sorted_ind, ],
+              N0 = sum(sorted_ind <= setup$N0),
+              T0 = setup$T0,
+              X = setup$X[sorted_ind, , ],
+              weights = weights.boot,
+              zeta.omega = opts$zeta.omega,
+              zeta.lambda = opts$zeta.lambda,
+              omega.intercept = opts$omega.intercept,
+              lambda.intercept = opts$lambda.intercept,
+              update.omega = opts$update.omega,
+              update.lambda = opts$update.lambda,
+              min.decrease = opts$min.decrease,
+              max.iter = opts$max.iter,
+              suppress_convergence_warning = opts$suppress_convergence_warning
+            ),
+            lifecycle_warning_deprecated = function(cnd) invokeRestart("muffleWarning")
           )))
         }
       },
@@ -182,21 +177,24 @@ jackknife_se <- function(estimate, weights = attr(estimate, "weights")) {
         if (!is.null(weights)) {
           weights.jk$omega <- sum_normalize(weights$omega[ind[ind <= setup$N0]])
         }
-        as.vector(synthdid_estimate(
-          Y = setup$Y[ind, ],
-          N0 = sum(ind <= setup$N0),
-          T0 = setup$T0,
-          X = setup$X[ind, , ],
-          weights = weights.jk,
-          zeta.omega = opts$zeta.omega,
-          zeta.lambda = opts$zeta.lambda,
-          omega.intercept = opts$omega.intercept,
-          lambda.intercept = opts$lambda.intercept,
-          update.omega = opts$update.omega,
-          update.lambda = opts$update.lambda,
-          min.decrease = opts$min.decrease,
-          max.iter = opts$max.iter,
-          suppress_convergence_warning = opts$suppress_convergence_warning
+        as.vector(withCallingHandlers(
+          synthdid_estimate(
+            Y = setup$Y[ind, ],
+            N0 = sum(ind <= setup$N0),
+            T0 = setup$T0,
+            X = setup$X[ind, , ],
+            weights = weights.jk,
+            zeta.omega = opts$zeta.omega,
+            zeta.lambda = opts$zeta.lambda,
+            omega.intercept = opts$omega.intercept,
+            lambda.intercept = opts$lambda.intercept,
+            update.omega = opts$update.omega,
+            update.lambda = opts$update.lambda,
+            min.decrease = opts$min.decrease,
+            max.iter = opts$max.iter,
+            suppress_convergence_warning = opts$suppress_convergence_warning
+          ),
+          lifecycle_warning_deprecated = function(cnd) invokeRestart("muffleWarning")
         ))
       },
       .options = furrr::furrr_options(seed = TRUE)
@@ -237,21 +235,24 @@ placebo_se <- function(estimate, replications) {
         N0 <- length(ind) - N1
         weights.boot <- weights
         weights.boot$omega <- sum_normalize(weights$omega[ind[1:N0]])
-        as.vector(synthdid_estimate(
-          Y = setup$Y[ind, ],
-          N0 = N0,
-          T0 = setup$T0,
-          X = setup$X[ind, , ],
-          weights = weights.boot,
-          zeta.omega = opts$zeta.omega,
-          zeta.lambda = opts$zeta.lambda,
-          omega.intercept = opts$omega.intercept,
-          lambda.intercept = opts$lambda.intercept,
-          update.omega = opts$update.omega,
-          update.lambda = opts$update.lambda,
-          min.decrease = opts$min.decrease,
-          max.iter = opts$max.iter,
-          suppress_convergence_warning = opts$suppress_convergence_warning
+        as.vector(withCallingHandlers(
+          synthdid_estimate(
+            Y = setup$Y[ind, ],
+            N0 = N0,
+            T0 = setup$T0,
+            X = setup$X[ind, , ],
+            weights = weights.boot,
+            zeta.omega = opts$zeta.omega,
+            zeta.lambda = opts$zeta.lambda,
+            omega.intercept = opts$omega.intercept,
+            lambda.intercept = opts$lambda.intercept,
+            update.omega = opts$update.omega,
+            update.lambda = opts$update.lambda,
+            min.decrease = opts$min.decrease,
+            max.iter = opts$max.iter,
+            suppress_convergence_warning = opts$suppress_convergence_warning
+          ),
+          lifecycle_warning_deprecated = function(cnd) invokeRestart("muffleWarning")
         ))
       },
       .options = furrr::furrr_options(seed = TRUE)

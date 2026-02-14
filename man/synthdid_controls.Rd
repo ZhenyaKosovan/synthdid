@@ -2,9 +2,7 @@
 % Please edit documentation in R/summary.R
 \name{synthdid_controls}
 \alias{synthdid_controls}
-\title{Outputs a table of important synthetic controls and their corresponding weights, sorted by weight.
-The table is truncated to exclude synthetic controls that do not matter for any estimate ---
-for each estimate, the truncated controls may have total weight no larger that 1-mass.}
+\title{Outputs a table of important synthetic controls and their corresponding weights, sorted by weight.}
 \usage{
 synthdid_controls(
   estimates,
@@ -26,24 +24,12 @@ synthdid_controls(
 A matrix of weights for the top controls/periods, sorted by importance.
 }
 \description{
-Outputs a table of important synthetic controls and their corresponding weights, sorted by weight.
+\ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#deprecated}{\figure{lifecycle-deprecated.svg}{options: alt='[Deprecated]'}}}{\strong{[Deprecated]}}
+
+\code{synthdid_controls()} was deprecated in synthdid 2.0.0.
+Use the formula interface with \code{\link[=synthdid]{synthdid()}} instead.
+
 The table is truncated to exclude synthetic controls that do not matter for any estimate ---
 for each estimate, the truncated controls may have total weight no larger that 1-mass.
 }
-\examples{
-\donttest{
-data(california_prop99)
-setup <- panel.matrices(california_prop99)
-tau.hat <- synthdid_estimate(setup$Y, setup$N0, setup$T0)
-
-# Show top control units
-synthdid_controls(tau.hat, weight.type = "omega")
-
-# Show top time periods
-synthdid_controls(tau.hat, weight.type = "lambda")
-
-# Compare multiple estimates
-tau.sc <- sc_estimate(setup$Y, setup$N0, setup$T0)
-synthdid_controls(list(sdid = tau.hat, sc = tau.sc))
-}
-}
+\keyword{internal}
