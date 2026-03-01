@@ -185,6 +185,7 @@ timesteps <- function(Y) {
 ## define some convenient accessors
 setOldClass("synthdid_estimate")
 setOldClass("synthdid")
+setOldClass("synthdid_staggered")
 
 #' Create a slot accessor function
 #'

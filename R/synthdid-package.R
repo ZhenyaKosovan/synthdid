@@ -4,9 +4,16 @@
 #' that we think of as satisfying Y\[i,j\] = L\[i,j\] + tau\[i,j\] W\[i,j\] + noise\[i,j\].
 #' Here tau\[i,j\] is the effect of treatment on the unit i at time j, and we estimate the average effect of
 #' treatment when and where it happened: the average of tau\[i,j\] over the observations with W\[i,j\]=1.
-#' All treated units must begin treatment simultaneously, so W is a block matrix: W\[i,j\] = 1 for i > N0 and j > T0
-#' and zero otherwise, with N0 denoting the number of control units and T0 the number of observation times
-#' before onset of treatment. This applies, in particular, to the case of a single treated unit or treated period.
+#'
+#' The package supports two treatment adoption patterns:
+#' * **Simultaneous adoption**: all treated units begin treatment at the same time (classic SDID).
+#' * **Staggered adoption**: treated units adopt at different times. The staggered estimator
+#'   decomposes the panel into cohort-specific 2x2 SDID subproblems and aggregates, following
+#'   the approach of Porreca (2022).
+#'
+#' The formula interface [synthdid()] auto-detects the adoption pattern and routes to the
+#' appropriate estimator. Use `adoption = "staggered"` or `adoption = "simultaneous"` to
+#' override auto-detection.
 #'
 #' Some helpful links for getting started:
 #'

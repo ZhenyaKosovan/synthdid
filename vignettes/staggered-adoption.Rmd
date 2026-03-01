@@ -1,0 +1,342 @@
+---
+title: "Staggered Adoption"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Staggered Adoption}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r echo=FALSE}
+knitr::opts_chunk$set(collapse = TRUE, comment = "#>")
+ragg_png = function(..., res = 192) {
+  ragg::agg_png(..., res = res, units = "in")
+}
+knitr::opts_chunk$set(dev = "ragg_png", fig.ext = "png")
+```
+
+```{r setup, message=FALSE}
+library(synthdid)
+library(ggplot2)
+library(dplyr)
+library(tidyr)
+set.seed(42)
+```
+
+# Introduction
+
+The standard SDID estimator from Arkhangelsky et al. (2021) assumes that all
+treated units adopt treatment simultaneously. In practice, many policies are
+adopted at different times across units---states pass laws in different years,
+firms adopt technologies in different quarters, and so on. This is called
+**staggered adoption**.
+
+Porreca (2022, *Economics Letters*) formalizes an extension of SDID to the
+staggered setting, building on the idea sketched in Appendix A of
+Arkhangelsky et al. (2021). The approach decomposes the staggered panel into
+cohort-specific subproblems, estimates SDID on each, and aggregates the
+results into a single average treatment effect on the treated (ATT).
+
+This vignette replicates the empirical application from Porreca (2022) using
+data on sentencing enhancement laws from Abrams (2012), then demonstrates
+additional features of the staggered estimator.
+
+
+# The Sentencing Enhancement Data
+
+Abrams (2012) studies whether sentencing enhancements for firearm offenses
+deter armed robbery. Twenty-three US states adopted "add-on" gun laws at
+different times between 1972 and 1996, while 17 states never adopted such
+laws. The `abrams_sentencing` dataset is a balanced panel of 40 states
+observed annually from 1965 to 2002.
+
+```{r}
+data(abrams_sentencing)
+head(abrams_sentencing)
+```
+
+The staggered adoption structure is rich: 14 distinct adoption cohorts spread
+over 25 years.
+
+```{r}
+abrams_sentencing |>
+  filter(!is.na(addonyr)) |>
+  distinct(state, addonyr) |>
+  count(addonyr, name = "n_states")
+```
+
+We can visualize the treatment pattern:
+
+```{r fig.width=7, fig.height=5}
+abrams_sentencing |>
+  mutate(
+    status = case_when(
+      is.na(addonyr) ~ "Never treated",
+      post == 1 ~ "Treated",
+      TRUE ~ "Not yet treated"
+    ),
+    status = factor(status, levels = c("Never treated", "Not yet treated", "Treated"))
+  ) |>
+  ggplot(aes(x = year,
+             y = reorder(factor(state),
+                         -as.numeric(is.na(addonyr)) * 10000 - ifelse(is.na(addonyr), 0, addonyr)),
+             fill = status)) +
+  geom_tile(color = "white", linewidth = 0.1) +
+  scale_fill_manual(values = c("Never treated" = "grey85",
+                                "Not yet treated" = "steelblue",
+                                "Treated" = "firebrick")) +
+  labs(x = "Year", y = "State", fill = NULL,
+       title = "Treatment Adoption Pattern",
+       subtitle = "23 states adopted sentencing enhancements between 1972 and 1996") +
+  theme_minimal(base_size = 10) +
+  theme(axis.text.y = element_blank(),
+        panel.grid = element_blank())
+```
+
+
+# The Problem with Naive SDID
+
+Why can't we just apply the standard (simultaneous) SDID estimator to a
+staggered panel? The core issue is **control group contamination**: when
+units adopt treatment at different times, already-treated units end up in the
+control group for later-adopting cohorts. This violates a fundamental
+assumption of the synthetic control approach---that control units are
+untreated throughout the study period.
+
+The `synthdid()` function detects staggered adoption and raises an error if
+you try to force simultaneous estimation:
+
+```{r error=TRUE}
+synthdid(pcrrobgun ~ post,
+         data = abrams_sentencing,
+         index = c("state", "year"),
+         adoption = "simultaneous")
+```
+
+
+# Staggered SDID Methodology
+
+The Porreca (2022) approach handles staggered adoption by decomposing the
+problem into cohort-specific **2x2 subproblems**:
+
+1. **Identify cohorts**: group treated units by their adoption time. In the
+   Abrams data, this produces 14 cohorts.
+
+2. **Construct subproblems**: for each cohort, build a standard SDID problem
+   with:
+   - **Treated units**: the cohort members
+   - **Control units**: determined by `control_type`
+   - **Pre-treatment periods**: all periods before the cohort's adoption
+   - **Post-treatment periods**: periods after adoption
+
+3. **Estimate**: run standard SDID on each subproblem independently.
+
+4. **Aggregate**: combine cohort-level effects into a single ATT using
+   aggregation weights.
+
+Two key choices govern the construction:
+
+**Control set** (`control_type`):
+
+- `"not_yet_treated"` (default): controls include both never-treated units
+  and units that haven't adopted yet at the time of the cohort's last
+  post-treatment period. This maximizes the donor pool.
+- `"never_treated"`: only units that never adopt serve as controls.
+
+**Aggregation weights** (`weights`):
+
+- `"treated_unit_time"` (default): each cohort is weighted by the number of
+  treated unit-time cells (cohort size x post-treatment periods). This gives
+  more weight to cohorts that affect more units for longer.
+- `"cohort_size"`: weights by the number of treated units only.
+- `"equal"`: each cohort gets equal weight regardless of size.
+
+
+# Replicating Porreca (2022)
+
+Porreca (2022, Table 1) reports a SynthDiD estimate of $-16.697$ for the
+effect of sentencing enhancements on per-capita armed robbery rates, using
+never-treated controls. We can replicate this exactly:
+
+```{r}
+result <- synthdid(pcrrobgun ~ post,
+                   data = abrams_sentencing,
+                   index = c("state", "year"),
+                   control_type = "never_treated",
+                   weights = "treated_unit_time")
+
+result
+```
+
+```{r}
+coef(result)
+```
+
+The aggregate ATT of $-16.697$ matches Porreca's Table 1 exactly. The
+estimate suggests that sentencing enhancements reduced per-capita armed
+robbery by about 17 per 100,000 population.
+
+
+## Cohort-Level Effects
+
+The aggregate hides substantial heterogeneity across cohorts:
+
+```{r}
+coef(result, type = "cohort")
+```
+
+The full cohort table shows each cohort's estimate alongside its size and
+aggregation weight:
+
+```{r}
+result$cohort_effects
+```
+
+
+# Comparing Methods: SDID vs DID vs SC
+
+All three estimation methods work with staggered adoption. We can compare
+them on the same data:
+
+```{r}
+did_result <- synthdid(pcrrobgun ~ post, data = abrams_sentencing,
+                       index = c("state", "year"), method = "did",
+                       control_type = "never_treated",
+                       weights = "treated_unit_time")
+
+sc_result <- synthdid(pcrrobgun ~ post, data = abrams_sentencing,
+                      index = c("state", "year"), method = "sc",
+                      control_type = "never_treated",
+                      weights = "treated_unit_time")
+
+comparison <- data.frame(
+  Method = c("SDID", "DID", "SC"),
+  ATT = round(c(coef(result), coef(did_result), coef(sc_result)), 3),
+  Porreca_Table1 = c(-16.697, NA, NA)
+)
+comparison
+```
+
+Porreca's Table 1 also reports TWFE = $-20.182$ and Callaway & Sant'Anna =
+$-23.724$. The SynthDiD estimate is more conservative than these
+alternatives, consistent with Porreca's finding that SDID may be more
+appropriate when the data-generating process follows a latent factor model
+rather than additive fixed effects.
+
+
+# Visualization
+
+## Cohort Effects
+
+The `plot()` method produces a cohort-level bar plot. Bar opacity reflects the
+aggregation weight, and the dashed red line marks the aggregate ATT:
+
+```{r fig.width=7, fig.height=4}
+plot(result)
+```
+
+## Event Study
+
+An event-study style plot shows how treatment effects evolve over time since
+adoption, separately for each cohort:
+
+```{r fig.width=7, fig.height=4}
+plot(result, type = "event")
+```
+
+The event-study view reveals whether effects are immediate or delayed, and
+whether they grow, shrink, or remain stable after adoption.
+
+
+# Sensitivity Analysis
+
+## Aggregation Weights
+
+The choice of aggregation weights determines how cohort-level effects are
+combined:
+
+```{r}
+result_cohort_size <- synthdid(pcrrobgun ~ post, data = abrams_sentencing,
+                               index = c("state", "year"),
+                               control_type = "never_treated",
+                               weights = "cohort_size")
+
+result_equal <- synthdid(pcrrobgun ~ post, data = abrams_sentencing,
+                         index = c("state", "year"),
+                         control_type = "never_treated",
+                         weights = "equal")
+
+data.frame(
+  aggregation = c("treated_unit_time", "cohort_size", "equal"),
+  ATT = round(c(coef(result), coef(result_cohort_size), coef(result_equal)), 3)
+)
+```
+
+## Control Set: Not-Yet-Treated vs Never-Treated
+
+The default `control_type = "not_yet_treated"` uses a larger donor pool. With
+many cohorts spread over time (as in this dataset), not-yet-treated units
+substantially expand the control set for early adopters:
+
+```{r}
+result_nyt <- synthdid(pcrrobgun ~ post, data = abrams_sentencing,
+                       index = c("state", "year"),
+                       control_type = "not_yet_treated",
+                       weights = "treated_unit_time")
+
+data.frame(
+  control_set = c("never_treated", "not_yet_treated"),
+  ATT = round(c(coef(result), coef(result_nyt)), 3)
+)
+```
+
+
+# Inference
+
+Bootstrap standard errors are available via `se = TRUE`. The bootstrap
+resamples entire units while preserving the cohort structure.
+
+```{r eval=FALSE}
+result_se <- synthdid(pcrrobgun ~ post,
+                      data = abrams_sentencing,
+                      index = c("state", "year"),
+                      control_type = "never_treated",
+                      weights = "treated_unit_time",
+                      se = TRUE,
+                      se_method = "bootstrap",
+                      se_replications = 200)
+
+summary(result_se)
+confint(result_se)
+```
+
+For faster computation, the bootstrap is parallelizable using the `future`
+framework. See `vignette("parallel-processing")` for details:
+
+```{r eval=FALSE}
+library(future)
+plan(multisession, workers = 4)
+
+result_se <- synthdid(pcrrobgun ~ post,
+                      data = abrams_sentencing,
+                      index = c("state", "year"),
+                      control_type = "never_treated",
+                      weights = "treated_unit_time",
+                      se = TRUE)
+
+plan(sequential)
+```
+
+
+# References
+
+Abrams, D. S. (2012). Estimating the Deterrent Effect of Incarceration using
+Sentencing Enhancements. *American Economic Journal: Applied Economics*,
+4(4), 32--56.
+
+Arkhangelsky, D., Athey, S., Hirshberg, D. A., Imbens, G. W., & Wager, S.
+(2021). Synthetic Difference in Differences. *American Economic Review*,
+111(12), 4088--4118.
+
+Porreca, M. (2022). Synthetic Difference in Differences Estimation with
+Staggered Treatment Timing. *Economics Letters*, 220, 110873.
