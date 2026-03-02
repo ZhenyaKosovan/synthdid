@@ -4,20 +4,37 @@
 \alias{plot.synthdid_staggered}
 \title{Plot synthdid_staggered}
 \usage{
-\method{plot}{synthdid_staggered}(x, type = c("cohort", "event"), ...)
+\method{plot}{synthdid_staggered}(
+  x,
+  type = c("effect", "trajectory", "weights", "cohort", "event"),
+  subtype = c("cohort", "event"),
+  mode = "auto",
+  ...
+)
 }
 \arguments{
 \item{x}{A synthdid_staggered object}
 
-\item{type}{Plot type: \code{"cohort"} (default) for cohort effects bar plot,
-\code{"event"} for event-study style plot by relative time.}
+\item{type}{Plot type: \code{"effect"} (default), \code{"trajectory"},
+\code{"weights"}, or legacy values \code{"cohort"} / \code{"event"}.}
 
-\item{...}{Additional arguments (currently ignored)}
+\item{subtype}{For effect plots: \code{"cohort"} (default) for cohort
+effects bar plot, \code{"event"} for event-study style plot.}
+
+\item{mode}{Display mode: \code{"auto"} (default), \code{"full"},
+or \code{"top_k"}.}
+
+\item{...}{Additional arguments passed to the plot engine.}
 }
 \value{
 A ggplot2 object
 }
 \description{
-Produces a cohort-level effect plot showing each cohort's estimated treatment
-effect and the aggregate ATT.
+Produces plots for staggered synthetic difference-in-differences estimates.
+The default is an effect plot showing cohort-level treatment effects.
+}
+\details{
+For backward compatibility, \code{type = "cohort"} and \code{type = "event"}
+are translated to \code{type = "effect"} with the corresponding
+\code{subtype}.
 }

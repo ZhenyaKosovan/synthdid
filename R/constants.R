@@ -169,3 +169,20 @@ SYNTHDID_WEIGHT_DIGITS_DEFAULT <- 3
 
 # Default number of top controls/periods to display in summary
 SYNTHDID_SUMMARY_TOP_N_DEFAULT <- 5
+
+
+# =============================================================================
+# PLOT ENGINE PARAMETERS
+# =============================================================================
+
+# N0 above this threshold triggers top-k mode instead of showing all controls
+SYNTHDID_PLOT_AUTO_THRESHOLD <- 100
+
+# Default number of top-weighted control units to show in top-k mode
+SYNTHDID_PLOT_TOP_K_DEFAULT <- 25
+
+# Hard guardrail: max data points per plot layer to prevent ggplot slowdowns
+SYNTHDID_PLOT_MAX_POINTS <- 50000
+
+# Number of top omega weights to label in weights plot
+SYNTHDID_PLOT_WEIGHTS_LABEL_K <- 10

@@ -3,6 +3,7 @@ if (getRversion() >= "2.15.1") {
     "color", "estimate", "frame", "iteration", "method", "se", "show",
     "weight", "x", "y", "xend", "yend", "xintercept", "xlab", "ylab",
     "ymax", "ymin", "unit",
-    "cohort_label", "relative_time", "effect"
+    "cohort_label", "relative_time", "effect",
+    "time", "value", "series", "y_base", "y_top"
   ))
 }

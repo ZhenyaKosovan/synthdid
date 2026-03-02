@@ -340,11 +340,19 @@ test_that("plot.synthdid_staggered creates ggplot objects", {
   panel <- make_staggered_panel()
   est <- synthdid_staggered_estimate(panel$Y, panel$W)
 
-  p1 <- plot(est, type = "cohort")
+  # New API: type = "effect" with subtype
+  p1 <- plot(est, type = "effect", subtype = "cohort")
   expect_s3_class(p1, "gg")
 
-  p2 <- plot(est, type = "event")
+  p2 <- plot(est, type = "effect", subtype = "event")
   expect_s3_class(p2, "gg")
+
+  # Legacy API: type = "cohort" / "event" still works with deprecation warning
+  lifecycle::expect_deprecated(p3 <- plot(est, type = "cohort"))
+  expect_s3_class(p3, "gg")
+
+  lifecycle::expect_deprecated(p4 <- plot(est, type = "event"))
+  expect_s3_class(p4, "gg")
 })
 
 

@@ -574,8 +574,22 @@ synthdid_rmse_plot <- function(estimates) { # pass an estimate or list of estima
 }
 
 #' Plot a synthdid object
+#'
+#' By default, produces a clean trajectory plot using the new plot engine.
+#' If legacy arguments (e.g. \code{spaghetti.units}, \code{facet},
+#' \code{overlay}, \code{se.method}) are detected, silently delegates to
+#' the deprecated \code{synthdid_plot()} to preserve backward compatibility.
+#'
 #' @param x The object to plot
-#' @param ... Additional arguments (currently ignored).
+#' @param type Plot type: \code{"trajectory"} (default), \code{"weights"},
+#'   or \code{"effect"}.
+#' @param mode Display mode: \code{"auto"} (default, picks based on panel
+#'   size), \code{"full"}, or \code{"top_k"}.
+#' @param top_k Number of top-weighted control units to show in top_k mode.
+#' @param include_controls Logical; if TRUE, show individual control unit
+#'   trajectories behind the synthetic control line.
+#' @param ... Additional arguments. If any legacy argument names are detected,
+#'   the call is forwarded to \code{synthdid_plot()}.
 #' @return A ggplot2 object.
 #' @examples
 #' \donttest{
@@ -583,17 +597,44 @@ synthdid_rmse_plot <- function(estimates) { # pass an estimate or list of estima
 #' setup <- panel.matrices(california_prop99)
 #' tau.hat <- synthdid_estimate(setup$Y, setup$N0, setup$T0)
 #' plot(tau.hat)
+#' plot(tau.hat, type = "weights")
+#' plot(tau.hat, type = "effect")
 #' }
 #' @method plot synthdid_estimate
 #' @export
-plot.synthdid_estimate <- function(x, ...) {
-  if (requireNamespace("ggplot2", quietly = TRUE)) {
-    .ignore <- tryCatch(attachNamespace("ggplot2"), error = function(e) e)
-  } else {
+plot.synthdid_estimate <- function(x, type = "trajectory", mode = "auto",
+                                   top_k = NULL, include_controls = FALSE,
+                                   ...) {
+  if (!requireNamespace("ggplot2", quietly = TRUE)) {
     stop("Plotting requires the package `ggplot2`. Install it to use this function.")
   }
-  withCallingHandlers(
-    synthdid_plot(x, ...),
-    lifecycle_warning_deprecated = function(cnd) invokeRestart("muffleWarning")
+
+  # Legacy argument detection: delegate to old synthdid_plot() for backward compat
+  legacy_args <- c(
+    "spaghetti.units", "spaghetti.matrices", "facet", "facet.vertical",
+    "lambda.comparable", "overlay", "lambda.plot.scale",
+    "trajectory.linetype", "effect.curvature", "line.width",
+    "guide.linetype", "point.size", "trajectory.alpha", "diagram.alpha",
+    "effect.alpha", "onset.alpha", "ci.alpha", "spaghetti.line.width",
+    "spaghetti.label.size", "spaghetti.line.alpha", "spaghetti.label.alpha",
+    "se.method", "alpha.multiplier", "treated.name", "control.name"
+  )
+  dots <- list(...)
+  if (any(names(dots) %in% legacy_args)) {
+    .ignore <- tryCatch(attachNamespace("ggplot2"), error = function(e) e)
+    return(withCallingHandlers(
+      synthdid_plot(x, ...),
+      lifecycle_warning_deprecated = function(cnd) invokeRestart("muffleWarning")
+    ))
+  }
+
+  type <- match.arg(type, c("trajectory", "weights", "effect"))
+  synthdid_render_plot(
+    x,
+    type = type,
+    mode = mode,
+    top_k = top_k,
+    include_controls = include_controls,
+    ...
   )
 }

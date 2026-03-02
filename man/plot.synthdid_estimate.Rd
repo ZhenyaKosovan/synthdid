@@ -4,18 +4,40 @@
 \alias{plot.synthdid_estimate}
 \title{Plot a synthdid object}
 \usage{
-\method{plot}{synthdid_estimate}(x, ...)
+\method{plot}{synthdid_estimate}(
+  x,
+  type = "trajectory",
+  mode = "auto",
+  top_k = NULL,
+  include_controls = FALSE,
+  ...
+)
 }
 \arguments{
 \item{x}{The object to plot}
 
-\item{...}{Additional arguments (currently ignored).}
+\item{type}{Plot type: \code{"trajectory"} (default), \code{"weights"},
+or \code{"effect"}.}
+
+\item{mode}{Display mode: \code{"auto"} (default, picks based on panel
+size), \code{"full"}, or \code{"top_k"}.}
+
+\item{top_k}{Number of top-weighted control units to show in top_k mode.}
+
+\item{include_controls}{Logical; if TRUE, show individual control unit
+trajectories behind the synthetic control line.}
+
+\item{...}{Additional arguments. If any legacy argument names are detected,
+the call is forwarded to \code{synthdid_plot()}.}
 }
 \value{
 A ggplot2 object.
 }
 \description{
-Plot a synthdid object
+By default, produces a clean trajectory plot using the new plot engine.
+If legacy arguments (e.g. \code{spaghetti.units}, \code{facet},
+\code{overlay}, \code{se.method}) are detected, silently delegates to
+the deprecated \code{synthdid_plot()} to preserve backward compatibility.
 }
 \examples{
 \donttest{
@@ -23,5 +45,7 @@ data(california_prop99)
 setup <- panel.matrices(california_prop99)
 tau.hat <- synthdid_estimate(setup$Y, setup$N0, setup$T0)
 plot(tau.hat)
+plot(tau.hat, type = "weights")
+plot(tau.hat, type = "effect")
 }
 }

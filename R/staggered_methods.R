@@ -213,26 +213,48 @@ predict.synthdid_staggered <- function(object, ...,
 
 #' Plot synthdid_staggered
 #'
-#' Produces a cohort-level effect plot showing each cohort's estimated treatment
-#' effect and the aggregate ATT.
+#' Produces plots for staggered synthetic difference-in-differences estimates.
+#' The default is an effect plot showing cohort-level treatment effects.
+#'
+#' For backward compatibility, \code{type = "cohort"} and \code{type = "event"}
+#' are translated to \code{type = "effect"} with the corresponding
+#' \code{subtype}.
 #'
 #' @param x A synthdid_staggered object
-#' @param type Plot type: \code{"cohort"} (default) for cohort effects bar plot,
-#'   \code{"event"} for event-study style plot by relative time.
-#' @param ... Additional arguments (currently ignored)
+#' @param type Plot type: \code{"effect"} (default), \code{"trajectory"},
+#'   \code{"weights"}, or legacy values \code{"cohort"} / \code{"event"}.
+#' @param subtype For effect plots: \code{"cohort"} (default) for cohort
+#'   effects bar plot, \code{"event"} for event-study style plot.
+#' @param mode Display mode: \code{"auto"} (default), \code{"full"},
+#'   or \code{"top_k"}.
+#' @param ... Additional arguments passed to the plot engine.
 #' @return A ggplot2 object
 #' @export
-plot.synthdid_staggered <- function(x, type = c("cohort", "event"), ...) {
+plot.synthdid_staggered <- function(x,
+                                    type = c("effect", "trajectory", "weights",
+                                             "cohort", "event"),
+                                    subtype = c("cohort", "event"),
+                                    mode = "auto", ...) {
   if (!requireNamespace("ggplot2", quietly = TRUE)) {
     stop("Plotting requires the 'ggplot2' package.")
   }
   type <- match.arg(type)
+  subtype <- match.arg(subtype)
 
-  if (type == "cohort") {
-    return(plot_staggered_cohort(x))
-  } else {
-    return(plot_staggered_event(x))
+  # Backward compatibility: translate legacy type values
+  if (type %in% c("cohort", "event")) {
+    lifecycle::deprecate_soft(
+      "2.0.0",
+      'plot.synthdid_staggered(type = "must be effect/trajectory/weights")',
+      details = paste0(
+        'Use type = "effect", subtype = "', type, '" instead of type = "', type, '".'
+      )
+    )
+    subtype <- type
+    type <- "effect"
   }
+
+  synthdid_render_plot(x, type = type, mode = mode, subtype = subtype, ...)
 }
 
 
