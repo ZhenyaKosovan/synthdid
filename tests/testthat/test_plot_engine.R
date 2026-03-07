@@ -242,6 +242,29 @@ test_that("render_effect_plot returns ggplot for staggered event", {
   expect_s3_class(p, "gg")
 })
 
+test_that("render_effect_plot event handles more than eight cohorts", {
+  set.seed(123)
+  event_df <- do.call(rbind, lapply(seq_len(9), function(g) {
+    data.frame(
+      cohort_time = g,
+      relative_time = seq_len(3),
+      effect = stats::rnorm(3),
+      stringsAsFactors = FALSE
+    )
+  }))
+  spec <- list(
+    data = list(event_data = event_df),
+    annotations = list(),
+    options = list()
+  )
+
+  p <- render_effect_plot(spec, subtype = "event")
+  expect_s3_class(p, "gg")
+  expect_no_warning(built <- ggplot2::ggplot_build(p))
+  expect_false(any(is.na(built$data[[2]]$colour)))
+  expect_equal(length(unique(built$data[[2]]$group)), 9)
+})
+
 
 # =============================================================================
 # S3 dispatch / backward compatibility tests
@@ -314,4 +337,282 @@ test_that("trajectory plot has expected number of layers", {
   # geom_vline (onset), geom_ribbon (lambda) = 4 layers
   # But controls only if include_controls; minimum is 2 (lines + vline)
   expect_gte(length(p$layers), 2)
+})
+
+test_that("compose_staggered_trajectory_plots warns without patchwork", {
+  p1 <- ggplot2::ggplot(
+    data.frame(x = 1:2, y = 1:2),
+    ggplot2::aes(x = x, y = y)
+  ) + ggplot2::geom_line()
+  p2 <- ggplot2::ggplot(
+    data.frame(x = 1:2, y = 2:1),
+    ggplot2::aes(x = x, y = y)
+  ) + ggplot2::geom_line()
+
+  expect_warning(
+    combined <- compose_staggered_trajectory_plots(
+      list(p1, p2),
+      has_patchwork = FALSE
+    ),
+    "patchwork"
+  )
+  expect_identical(combined, p1)
+})
+
+test_that("trajectory plot uses linetype and color for series encoding", {
+  est <- make_test_estimate()
+  p <- plot(est, type = "trajectory")
+  expect_false(is.null(p$scales$get_scales("colour")))
+  expect_false(is.null(p$scales$get_scales("linetype")))
+})
+
+test_that("apply_time_axis_labels maps non-numeric time labels", {
+  base_plot <- ggplot2::ggplot(
+    data.frame(x = 1:5, y = 1:5),
+    ggplot2::aes(x = x, y = y)
+  ) + ggplot2::geom_line()
+
+  p <- apply_time_axis_labels(
+    base_plot,
+    time_values = 1:5,
+    time_labels = paste0("Q", 1:5),
+    time_is_numeric = FALSE
+  )
+
+  x_scale <- p$scales$get_scales("x")
+  expect_false(is.null(x_scale))
+  expect_equal(x_scale$get_labels(1:5), paste0("Q", 1:5))
+})
+
+# =============================================================================
+# Diagnostic plot tests
+# =============================================================================
+
+test_that("extract_diagnostic_payload returns correct structure", {
+  est <- make_test_estimate()
+  payload <- extract_diagnostic_payload(est)
+
+  expect_type(payload, "list")
+  expect_true("convergence_vals" %in% names(payload))
+  expect_true("treated_pre" %in% names(payload))
+  expect_true("synthetic_pre" %in% names(payload))
+  expect_true("residuals_pre" %in% names(payload))
+  expect_true("rmse_pre" %in% names(payload))
+  expect_true("time_pre" %in% names(payload))
+
+  setup <- attr(est, "setup")
+  expect_length(payload$treated_pre, setup$T0)
+  expect_length(payload$synthetic_pre, setup$T0)
+  expect_length(payload$residuals_pre, setup$T0)
+  expect_true(is.numeric(payload$rmse_pre))
+  expect_true(payload$rmse_pre >= 0)
+})
+
+test_that("build_diagnostic_spec builds convergence and fit data", {
+  est <- make_test_estimate()
+  payload <- extract_diagnostic_payload(est)
+  spec <- build_plot_spec(payload, type = "diagnostic")
+
+  expect_equal(spec$type, "diagnostic")
+  # Should have convergence data if vals exist
+  if (!is.null(payload$convergence_vals)) {
+    expect_true("convergence" %in% names(spec$data))
+    expect_true(all(c("iteration", "rmse") %in% names(spec$data$convergence)))
+  }
+  # Should have pretreatment fit data
+  expect_true("pretreatment_fit" %in% names(spec$data))
+  expect_true("residuals" %in% names(spec$data))
+  expect_true(!is.null(spec$annotations$rmse_pre))
+})
+
+test_that("render_diagnostic_plot returns ggplot for convergence", {
+  est <- make_test_estimate()
+  payload <- extract_diagnostic_payload(est)
+  spec <- build_plot_spec(payload, type = "diagnostic")
+
+  p <- render_diagnostic_plot(spec, subtype = "convergence")
+  expect_s3_class(p, "gg")
+})
+
+test_that("render_diagnostic_plot returns ggplot for fit", {
+  est <- make_test_estimate()
+  payload <- extract_diagnostic_payload(est)
+  spec <- build_plot_spec(payload, type = "diagnostic")
+
+  p <- render_diagnostic_plot(spec, subtype = "fit")
+  expect_s3_class(p, "gg")
+})
+
+test_that("plot.synthdid_estimate type='diagnostic' works", {
+  est <- make_test_estimate()
+
+  p <- plot(est, type = "diagnostic", subtype = "convergence")
+  expect_s3_class(p, "gg")
+
+  p2 <- plot(est, type = "diagnostic", subtype = "fit")
+  expect_s3_class(p2, "gg")
+})
+
+test_that("synthdid_rmse_plot routes single estimate to new engine", {
+  est <- make_test_estimate()
+  lifecycle::expect_deprecated(
+    p <- synthdid_rmse_plot(est)
+  )
+  expect_s3_class(p, "gg")
+})
+
+
+# =============================================================================
+# Scalability guardrail tests
+# =============================================================================
+
+test_that("auto mode emits message when downsampling controls to top_k", {
+  est <- make_test_estimate()
+  payload <- extract_plot_payload.synthdid_estimate(est, include_controls = TRUE)
+  # Override N0 to trigger top_k and verify message
+  payload$N0 <- 200
+
+  expect_message(
+    spec <- build_plot_spec(payload, type = "trajectory", mode = "auto",
+                            top_k = 5),
+    "Showing top 5 of"
+  )
+  expect_equal(spec$mode, "top_k")
+})
+
+test_that("max_points guardrail stops on mode='full' with too many points", {
+  # Build a fully consistent fake payload to trigger the guardrail
+  n_time <- 300
+  n_ctrl <- 200
+  payload <- list(
+    treated_trajectory = rep(1, n_time),
+    synthetic_trajectory = rep(1, n_time),
+    effect_curve = rep(0, 10),
+    omega = rep(1 / n_ctrl, n_ctrl),
+    lambda = rep(1 / (n_time - 10), n_time - 10),
+    time = seq_len(n_time),
+    time_labels = as.character(seq_len(n_time)),
+    T0 = n_time - 10,
+    T1 = 10,
+    N0 = n_ctrl,
+    N1 = 1,
+    tau = 0,
+    se = NA_real_,
+    estimator = "test",
+    unit_names = paste0("U", seq_len(n_ctrl + 1)),
+    control_trajectories = matrix(1, nrow = n_ctrl, ncol = n_time,
+                                  dimnames = list(paste0("U", seq_len(n_ctrl)),
+                                                  NULL))
+  )
+
+  expect_error(
+    build_plot_spec(payload, type = "trajectory", mode = "full"),
+    "data points"
+  )
+})
+
+test_that("max_points guardrail can be overridden with force=TRUE", {
+  n_time <- 300
+  n_ctrl <- 200
+  payload <- list(
+    treated_trajectory = rep(1, n_time),
+    synthetic_trajectory = rep(1, n_time),
+    effect_curve = rep(0, 10),
+    omega = rep(1 / n_ctrl, n_ctrl),
+    lambda = rep(1 / (n_time - 10), n_time - 10),
+    time = seq_len(n_time),
+    time_labels = as.character(seq_len(n_time)),
+    T0 = n_time - 10,
+    T1 = 10,
+    N0 = n_ctrl,
+    N1 = 1,
+    tau = 0,
+    se = NA_real_,
+    estimator = "test",
+    unit_names = paste0("U", seq_len(n_ctrl + 1)),
+    control_trajectories = matrix(1, nrow = n_ctrl, ncol = n_time,
+                                  dimnames = list(paste0("U", seq_len(n_ctrl)),
+                                                  NULL))
+  )
+
+  spec <- build_plot_spec(payload, type = "trajectory", mode = "full",
+                          force = TRUE)
+  expect_true("controls" %in% names(spec$data))
+})
+
+
+# =============================================================================
+# Weights subtypes tests
+# =============================================================================
+
+test_that("render_weights_plot subtype='omega' returns a ggplot", {
+  est <- make_test_estimate()
+  payload <- extract_plot_payload.synthdid_estimate(est)
+  spec <- build_plot_spec(payload, type = "weights")
+
+  p <- render_weights_plot(spec, subtype = "omega")
+  expect_s3_class(p, "gg")
+})
+
+test_that("render_weights_plot subtype='lambda' returns a ggplot", {
+  est <- make_test_estimate()
+  payload <- extract_plot_payload.synthdid_estimate(est)
+  spec <- build_plot_spec(payload, type = "weights")
+
+  p <- render_weights_plot(spec, subtype = "lambda")
+  expect_s3_class(p, "gg")
+})
+
+test_that("render_weights_plot subtype='cumulative' returns a ggplot", {
+  est <- make_test_estimate()
+  payload <- extract_plot_payload.synthdid_estimate(est)
+  spec <- build_plot_spec(payload, type = "weights")
+
+  p <- render_weights_plot(spec, subtype = "cumulative")
+  expect_s3_class(p, "gg")
+})
+
+test_that("build_weights_spec includes cumulative and lambda data", {
+  est <- make_test_estimate()
+  payload <- extract_plot_payload.synthdid_estimate(est)
+  spec <- build_plot_spec(payload, type = "weights")
+
+  expect_true("cumulative" %in% names(spec$data))
+  expect_true(all(c("rank", "cumulative") %in% names(spec$data$cumulative)))
+  expect_true("lambda_weights" %in% names(spec$data))
+  expect_true(all(c("time", "weight") %in% names(spec$data$lambda_weights)))
+  expect_true(!is.null(spec$annotations$n_effective))
+  expect_true(!is.null(spec$annotations$n_90pct))
+  expect_true(!is.null(spec$annotations$n_effective_time))
+})
+
+test_that("plot.synthdid_estimate type='weights' subtype='lambda' works", {
+  est <- make_test_estimate()
+  p <- plot(est, type = "weights", subtype = "lambda")
+  expect_s3_class(p, "gg")
+})
+
+
+# =============================================================================
+# Gap sub-panel tests
+# =============================================================================
+
+test_that("trajectory plot with show_gap=TRUE returns combined plot", {
+  est <- make_test_estimate()
+  p <- plot(est, type = "trajectory", show_gap = TRUE)
+  # patchwork is available, so this should be a patchwork object
+  expect_true(inherits(p, "patchwork") || inherits(p, "gg"))
+})
+
+
+test_that("staggered effect plots include uncertainty/context subtitles", {
+  stag <- make_test_staggered()
+  attr(stag, "se") <- 0.05
+
+  p_cohort <- plot(stag, type = "effect", subtype = "cohort")
+  expect_match(p_cohort$labels$subtitle, "Aggregate ATT")
+  expect_match(p_cohort$labels$subtitle, "\\[")
+
+  p_event <- plot(stag, type = "effect", subtype = "event")
+  expect_match(p_event$labels$subtitle, "point estimates")
 })

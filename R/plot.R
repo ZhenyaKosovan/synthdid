@@ -540,11 +540,9 @@ synthdid_units_plot <- function(estimates,
 #' @export synthdid_rmse_plot
 synthdid_rmse_plot <- function(estimates) { # pass an estimate or list of estimates
   lifecycle::deprecate_soft("2.0.0", "synthdid_rmse_plot()",
-    details = "Use the formula interface with `synthdid()` instead."
+    details = 'Use plot(est, type = "diagnostic", subtype = "convergence") instead.'
   )
-  if (requireNamespace("ggplot2", quietly = TRUE)) {
-    .ignore <- tryCatch(attachNamespace("ggplot2"), error = function(e) e)
-  } else {
+  if (!requireNamespace("ggplot2", quietly = TRUE)) {
     stop("Plotting requires the package `ggplot2`. Install it to use this function.")
   }
   if (inherits(estimates, "synthdid_estimate")) {
@@ -553,6 +551,16 @@ synthdid_rmse_plot <- function(estimates) { # pass an estimate or list of estima
   if (is.null(names(estimates))) {
     names(estimates) <- sprintf("estimate %d", 1:length(estimates))
   }
+  # Single estimate: delegate to new engine
+  if (length(estimates) == 1) {
+    return(withCallingHandlers(
+      synthdid_render_plot(estimates[[1]], type = "diagnostic",
+                           subtype = "convergence"),
+      lifecycle_warning_deprecated = function(cnd) invokeRestart("muffleWarning")
+    ))
+  }
+  # Multiple estimates: build combined convergence plot (legacy behavior)
+  .ignore <- tryCatch(attachNamespace("ggplot2"), error = function(e) e)
   rmse <- lapply(estimates, function(est) {
     sqrt(attr(est, "weights")$vals)
   })
@@ -582,12 +590,16 @@ synthdid_rmse_plot <- function(estimates) { # pass an estimate or list of estima
 #'
 #' @param x The object to plot
 #' @param type Plot type: \code{"trajectory"} (default), \code{"weights"},
-#'   or \code{"effect"}.
+#'   \code{"effect"}, or \code{"diagnostic"}.
 #' @param mode Display mode: \code{"auto"} (default, picks based on panel
 #'   size), \code{"full"}, or \code{"top_k"}.
 #' @param top_k Number of top-weighted control units to show in top_k mode.
+#' @param subtype For diagnostic plots: \code{"both"} (default),
+#'   \code{"convergence"}, or \code{"fit"}.
 #' @param include_controls Logical; if TRUE, show individual control unit
 #'   trajectories behind the synthetic control line.
+#' @param show_gap Logical; if TRUE, add a gap (treated - synthetic)
+#'   sub-panel below the trajectory plot. Requires patchwork.
 #' @param ... Additional arguments. If any legacy argument names are detected,
 #'   the call is forwarded to \code{synthdid_plot()}.
 #' @return A ggplot2 object.
@@ -603,7 +615,9 @@ synthdid_rmse_plot <- function(estimates) { # pass an estimate or list of estima
 #' @method plot synthdid_estimate
 #' @export
 plot.synthdid_estimate <- function(x, type = "trajectory", mode = "auto",
-                                   top_k = NULL, include_controls = FALSE,
+                                   top_k = NULL, subtype = "both",
+                                   include_controls = FALSE,
+                                   show_gap = FALSE,
                                    ...) {
   if (!requireNamespace("ggplot2", quietly = TRUE)) {
     stop("Plotting requires the package `ggplot2`. Install it to use this function.")
@@ -628,13 +642,15 @@ plot.synthdid_estimate <- function(x, type = "trajectory", mode = "auto",
     ))
   }
 
-  type <- match.arg(type, c("trajectory", "weights", "effect"))
+  type <- match.arg(type, c("trajectory", "weights", "effect", "diagnostic"))
   synthdid_render_plot(
     x,
     type = type,
     mode = mode,
     top_k = top_k,
+    subtype = subtype,
     include_controls = include_controls,
+    show_gap = show_gap,
     ...
   )
 }
