@@ -13,22 +13,12 @@ synthdid_convergence_info(estimate)
 List with convergence diagnostics
 }
 \description{
+\ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#deprecated}{\figure{lifecycle-deprecated.svg}{options: alt='[Deprecated]'}}}{\strong{[Deprecated]}}
+
+\code{synthdid_convergence_info()} was deprecated in synthdid 2.0.0.
+Convergence diagnostics are shown in the \code{print()} and \code{summary()} output.
+
 Returns detailed convergence information including iteration counts
 and which components (lambda, omega, joint) converged.
 }
-\examples{
-\donttest{
-data(california_prop99)
-setup <- panel.matrices(california_prop99)
-tau.hat <- synthdid_estimate(setup$Y, setup$N0, setup$T0)
-
-# Get detailed convergence diagnostics
-conv_info <- synthdid_convergence_info(tau.hat)
-print(conv_info)
-
-# Access components
-conv_info$lambda$iterations
-conv_info$omega$iterations
-conv_info$overall_converged
-}
-}
+\keyword{internal}

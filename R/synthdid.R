@@ -8,6 +8,12 @@ sparsify_function <- function(v) {
 
 #' Computes the synthetic diff-in-diff estimate for an average treatment effect on a treated block.
 #'
+#' @description
+#' `r lifecycle::badge("deprecated")`
+#'
+#' `synthdid_estimate()` was deprecated in synthdid 2.0.0 in favour of the
+#' formula interface [synthdid()].
+#'
 #' See 'Synthetic Difference in Differences' by Arkhangelsky et al. This implements Algorithm 1.
 #' @param Y the observation matrix.
 #' @param N0 the number of control units (N_co in the paper). Rows 1-N0 of Y correspond to the control units.
@@ -71,6 +77,7 @@ sparsify_function <- function(v) {
 #'   eta.omega = 0.5, eta.lambda = 1e-3
 #' )
 #' }
+#' @keywords internal
 #' @export synthdid_estimate
 synthdid_estimate <- function(Y, N0, T0, X = array(dim = c(dim(Y), 0)),
                               noise.level = NULL,
@@ -87,6 +94,7 @@ synthdid_estimate <- function(Y, N0, T0, X = array(dim = c(dim(Y), 0)),
                               se_method = c("bootstrap", "jackknife", "placebo"),
                               se_replications = SYNTHDID_SE_REPLICATIONS_DEFAULT,
                               suppress_convergence_warning = TRUE) {
+  lifecycle::deprecate_soft("2.0.0", "synthdid_estimate()", "synthdid()")
   if (any(is.na(Y))) {
     stop("Missing values in input data.")
   }
@@ -338,97 +346,82 @@ synthdid_estimate <- function(Y, N0, T0, X = array(dim = c(dim(Y), 0)),
   return(estimate)
 }
 
-#' synthdid_estimate for synthetic control estimates.
-#' Takes all the same parameters, but by default, passes options to use the synthetic control estimator
-#' By default, this uses only 'infinitesimal' ridge regularization when estimating the weights.
+#' Synthetic control estimate
+#'
+#' @description
+#' `r lifecycle::badge("deprecated")`
+#'
+#' `sc_estimate()` was deprecated in synthdid 2.0.0.
+#' Use `synthdid(formula, data, method = "sc")` instead.
+#'
+#' Takes all the same parameters as [synthdid_estimate()], but by default,
+#' passes options to use the synthetic control estimator.
 #' @param Y the observation matrix.
 #' @param N0 the number of control units. Rows 1-N0 of Y correspond to the control units.
 #' @param T0 the number of pre-treatment time steps. Columns 1-T0 of Y correspond to pre-treatment time steps.
 #' @param eta.omega determines the level of ridge regularization, zeta.omega = eta.omega * noise.level, as in synthdid_estimate.
 #' @param ... additional options for synthdid_estimate
 #' @return an object like that returned by synthdid_estimate
-#' @examples
-#' \donttest{
-#' # Estimate treatment effect using synthetic control method
-#' data(california_prop99)
-#' setup <- panel.matrices(california_prop99)
-#'
-#' # Synthetic control estimate
-#' tau.sc <- sc_estimate(setup$Y, setup$N0, setup$T0)
-#' print(tau.sc)
-#'
-#' # Compare with SynthDID
-#' tau.sdid <- synthdid_estimate(setup$Y, setup$N0, setup$T0)
-#' c(sc = tau.sc, sdid = tau.sdid)
-#'
-#' # With standard error
-#' tau.sc.se <- sc_estimate(setup$Y, setup$N0, setup$T0,
-#'   estimate_se = TRUE, se_method = "placebo"
-#' )
-#' sqrt(vcov(tau.sc.se))
-#' }
+#' @keywords internal
 #' @export sc_estimate
 sc_estimate <- function(Y, N0, T0, eta.omega = SYNTHDID_ETA_OMEGA_SC_DEFAULT, ...) {
-  estimate <- synthdid_estimate(Y, N0, T0,
-    eta.omega = eta.omega,
-    weights = list(lambda = rep(0, T0)), omega.intercept = FALSE, ...
+  lifecycle::deprecate_soft("2.0.0", "sc_estimate()", "synthdid()")
+  estimate <- withCallingHandlers(
+    synthdid_estimate(Y, N0, T0,
+      eta.omega = eta.omega,
+      weights = list(lambda = rep(0, T0)), omega.intercept = FALSE, ...
+    ),
+    lifecycle_warning_deprecated = function(cnd) invokeRestart("muffleWarning")
   )
   attr(estimate, "estimator") <- "sc"
   estimate
 }
 
-#' synthdid_estimate for diff-in-diff estimates.
-#' Takes all the same parameters, but by default, passes options to use the diff-in-diff estimator
+#' Difference-in-differences estimate
+#'
+#' @description
+#' `r lifecycle::badge("deprecated")`
+#'
+#' `did_estimate()` was deprecated in synthdid 2.0.0.
+#' Use `synthdid(formula, data, method = "did")` instead.
+#'
+#' Takes all the same parameters as [synthdid_estimate()], but by default,
+#' passes options to use the diff-in-diff estimator.
 #' @param Y the observation matrix.
 #' @param N0 the number of control units. Rows 1-N0 of Y correspond to the control units.
 #' @param T0 the number of pre-treatment time steps. Columns 1-T0 of Y correspond to pre-treatment time steps.
 #' @param ... additional  options for synthdid_estimate
 #' @return an object like that returned by synthdid_estimate
-#' @examples
-#' \donttest{
-#' # Estimate treatment effect using difference-in-differences
-#' data(california_prop99)
-#' setup <- panel.matrices(california_prop99)
-#'
-#' # DID estimate
-#' tau.did <- did_estimate(setup$Y, setup$N0, setup$T0)
-#' print(tau.did)
-#'
-#' # Compare all three estimators
-#' tau.sc <- sc_estimate(setup$Y, setup$N0, setup$T0)
-#' tau.sdid <- synthdid_estimate(setup$Y, setup$N0, setup$T0)
-#' estimates <- list(did = tau.did, sc = tau.sc, sdid = tau.sdid)
-#' sapply(estimates, function(x) x)
-#'
-#' # Visualize the differences
-#' # synthdid_plot(estimates)
-#' }
+#' @keywords internal
 #' @export did_estimate
 did_estimate <- function(Y, N0, T0, ...) {
-  estimate <- synthdid_estimate(Y, N0, T0, weights = list(lambda = rep(1 / T0, T0), omega = rep(1 / N0, N0)), ...)
+  lifecycle::deprecate_soft("2.0.0", "did_estimate()", "synthdid()")
+  estimate <- withCallingHandlers(
+    synthdid_estimate(Y, N0, T0, weights = list(lambda = rep(1 / T0, T0), omega = rep(1 / N0, N0)), ...),
+    lifecycle_warning_deprecated = function(cnd) invokeRestart("muffleWarning")
+  )
   attr(estimate, "estimator") <- "did"
   estimate
 }
 
 #' Computes a placebo variant of our estimator using pre-treatment data only
+#'
+#' @description
+#' `r lifecycle::badge("deprecated")`
+#'
+#' `synthdid_placebo()` was deprecated in synthdid 2.0.0.
+#' Use the formula interface with [synthdid()] instead.
+#'
 #' @param estimate, as output by synthdid_estimate
 #' @param treated.fraction, the fraction of pre-treatment data to use as a placebo treatment period
 #'        Defaults to NULL, which indicates that it should be the fraction of post-treatment to pre-treatment data
 #' @return A placebo estimate using only pre-treatment data
-#' @examples
-#' \donttest{
-#' data(california_prop99)
-#' setup <- panel.matrices(california_prop99)
-#' tau.hat <- synthdid_estimate(setup$Y, setup$N0, setup$T0)
-#'
-#' # Compute placebo estimate
-#' tau.placebo <- synthdid_placebo(tau.hat)
-#'
-#' # Should be close to zero if parallel trends holds
-#' c(estimate = tau.hat, placebo = tau.placebo)
-#' }
+#' @keywords internal
 #' @export synthdid_placebo
 synthdid_placebo <- function(estimate, treated.fraction = NULL) {
+  lifecycle::deprecate_soft("2.0.0", "synthdid_placebo()",
+    details = "Use the formula interface with `synthdid()` instead."
+  )
   setup <- attr(estimate, "setup")
   opts <- attr(estimate, "opts")
   weights <- attr(estimate, "weights")
@@ -440,24 +433,26 @@ synthdid_placebo <- function(estimate, treated.fraction = NULL) {
   }
   placebo.T0 <- floor(setup$T0 * (1 - treated.fraction))
 
-  do.call(estimator, c(list(Y = setup$Y[, 1:setup$T0], N0 = setup$N0, T0 = placebo.T0, X = setup$X[, 1:setup$T0, ]), opts))
+  withCallingHandlers(
+    do.call(estimator, c(list(Y = setup$Y[, 1:setup$T0], N0 = setup$N0, T0 = placebo.T0, X = setup$X[, 1:setup$T0, ]), opts)),
+    lifecycle_warning_deprecated = function(cnd) invokeRestart("muffleWarning")
+  )
 }
 
 #' Outputs the effect curve that was averaged to produce our estimate
+#'
+#' @description
+#' `r lifecycle::badge("deprecated")`
+#'
+#' `synthdid_effect_curve()` was deprecated in synthdid 2.0.0.
+#' Use `predict(fit, type = "effect")` instead.
+#'
 #' @param estimate, as output by synthdid_estimate
 #' @return A vector of treatment effects for each post-treatment period
-#' @examples
-#' \donttest{
-#' data(california_prop99)
-#' setup <- panel.matrices(california_prop99)
-#' tau.hat <- synthdid_estimate(setup$Y, setup$N0, setup$T0)
-#'
-#' # Get effect curve over time
-#' effect_curve <- synthdid_effect_curve(tau.hat)
-#' plot(effect_curve, type = "l", xlab = "Post-treatment period", ylab = "Effect")
-#' }
+#' @keywords internal
 #' @export synthdid_effect_curve
 synthdid_effect_curve <- function(estimate) {
+  lifecycle::deprecate_soft("2.0.0", "synthdid_effect_curve()", "predict()")
   setup <- attr(estimate, "setup")
   weights <- attr(estimate, "weights")
   X.beta <- contract3(setup$X, weights$beta)

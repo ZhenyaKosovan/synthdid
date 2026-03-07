@@ -16,18 +16,9 @@ Defaults to NULL, which indicates that it should be the fraction of post-treatme
 A placebo estimate using only pre-treatment data
 }
 \description{
-Computes a placebo variant of our estimator using pre-treatment data only
-}
-\examples{
-\donttest{
-data(california_prop99)
-setup <- panel.matrices(california_prop99)
-tau.hat <- synthdid_estimate(setup$Y, setup$N0, setup$T0)
+\ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#deprecated}{\figure{lifecycle-deprecated.svg}{options: alt='[Deprecated]'}}}{\strong{[Deprecated]}}
 
-# Compute placebo estimate
-tau.placebo <- synthdid_placebo(tau.hat)
-
-# Should be close to zero if parallel trends holds
-c(estimate = tau.hat, placebo = tau.placebo)
+\code{synthdid_placebo()} was deprecated in synthdid 2.0.0.
+Use the formula interface with \code{\link[=synthdid]{synthdid()}} instead.
 }
-}
+\keyword{internal}

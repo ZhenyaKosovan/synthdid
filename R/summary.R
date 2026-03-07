@@ -1,4 +1,11 @@
 #' Outputs a table of important synthetic controls and their corresponding weights, sorted by weight.
+#'
+#' @description
+#' `r lifecycle::badge("deprecated")`
+#'
+#' `synthdid_controls()` was deprecated in synthdid 2.0.0.
+#' Use the formula interface with [synthdid()] instead.
+#'
 #' The table is truncated to exclude synthetic controls that do not matter for any estimate ---
 #' for each estimate, the truncated controls may have total weight no larger that 1-mass.
 #' @param estimates, a list of estimates output by synthdid_estimate. Or a single estimate.
@@ -6,26 +13,14 @@
 #' @param mass, which controls the length of the table. Defaults to 0.9.
 #' @param weight.type, 'omega' for units, 'lambda' for time periods
 #' @return A matrix of weights for the top controls/periods, sorted by importance.
-#' @examples
-#' \donttest{
-#' data(california_prop99)
-#' setup <- panel.matrices(california_prop99)
-#' tau.hat <- synthdid_estimate(setup$Y, setup$N0, setup$T0)
-#'
-#' # Show top control units
-#' synthdid_controls(tau.hat, weight.type = "omega")
-#'
-#' # Show top time periods
-#' synthdid_controls(tau.hat, weight.type = "lambda")
-#'
-#' # Compare multiple estimates
-#' tau.sc <- sc_estimate(setup$Y, setup$N0, setup$T0)
-#' synthdid_controls(list(sdid = tau.hat, sc = tau.sc))
-#' }
+#' @keywords internal
 #' @export synthdid_controls
 synthdid_controls <- function(estimates, sort.by = 1,
                               mass = SYNTHDID_CONTROLS_MASS_DEFAULT,
                               weight.type = "omega") {
+  lifecycle::deprecate_soft("2.0.0", "synthdid_controls()",
+    details = "Use the formula interface with `synthdid()` instead."
+  )
   if (inherits(estimates, "synthdid_estimate")) {
     estimates <- list(estimates)
   }
@@ -101,8 +96,14 @@ summary.synthdid_estimate <- function(object,
   summary_obj <- list(
     estimate = c(object),
     se = se_val,
-    controls = round(synthdid_controls(object, weight.type = "omega"), digits = weight.digits),
-    periods = round(synthdid_controls(object, weight.type = "lambda"), digits = weight.digits),
+    controls = round(withCallingHandlers(
+      synthdid_controls(object, weight.type = "omega"),
+      lifecycle_warning_deprecated = function(cnd) invokeRestart("muffleWarning")
+    ), digits = weight.digits),
+    periods = round(withCallingHandlers(
+      synthdid_controls(object, weight.type = "lambda"),
+      lifecycle_warning_deprecated = function(cnd) invokeRestart("muffleWarning")
+    ), digits = weight.digits),
     dimensions = c(
       N1 = nrow(Y(object)) - N0, N0 = N0, N0.effective = round(1 / sum(omega(object)^2), weight.digits),
       T1 = ncol(Y(object)) - T0, T0 = T0, T0.effective = round(1 / sum(lambda(object)^2), weight.digits)

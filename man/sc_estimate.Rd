@@ -2,9 +2,7 @@
 % Please edit documentation in R/synthdid.R
 \name{sc_estimate}
 \alias{sc_estimate}
-\title{synthdid_estimate for synthetic control estimates.
-Takes all the same parameters, but by default, passes options to use the synthetic control estimator
-By default, this uses only 'infinitesimal' ridge regularization when estimating the weights.}
+\title{Synthetic control estimate}
 \usage{
 sc_estimate(Y, N0, T0, eta.omega = SYNTHDID_ETA_OMEGA_SC_DEFAULT, ...)
 }
@@ -23,28 +21,12 @@ sc_estimate(Y, N0, T0, eta.omega = SYNTHDID_ETA_OMEGA_SC_DEFAULT, ...)
 an object like that returned by synthdid_estimate
 }
 \description{
-synthdid_estimate for synthetic control estimates.
-Takes all the same parameters, but by default, passes options to use the synthetic control estimator
-By default, this uses only 'infinitesimal' ridge regularization when estimating the weights.
-}
-\examples{
-\donttest{
-# Estimate treatment effect using synthetic control method
-data(california_prop99)
-setup <- panel.matrices(california_prop99)
+\ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#deprecated}{\figure{lifecycle-deprecated.svg}{options: alt='[Deprecated]'}}}{\strong{[Deprecated]}}
 
-# Synthetic control estimate
-tau.sc <- sc_estimate(setup$Y, setup$N0, setup$T0)
-print(tau.sc)
+\code{sc_estimate()} was deprecated in synthdid 2.0.0.
+Use \code{synthdid(formula, data, method = "sc")} instead.
 
-# Compare with SynthDID
-tau.sdid <- synthdid_estimate(setup$Y, setup$N0, setup$T0)
-c(sc = tau.sc, sdid = tau.sdid)
-
-# With standard error
-tau.sc.se <- sc_estimate(setup$Y, setup$N0, setup$T0,
-  estimate_se = TRUE, se_method = "placebo"
-)
-sqrt(vcov(tau.sc.se))
+Takes all the same parameters as \code{\link[=synthdid_estimate]{synthdid_estimate()}}, but by default,
+passes options to use the synthetic control estimator.
 }
-}
+\keyword{internal}

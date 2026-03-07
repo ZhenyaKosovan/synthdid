@@ -45,6 +45,12 @@ pairwise.sum.decreasing <- function(x, y) {
 
 #' Convert a long (balanced) panel to a wide matrix
 #'
+#' @description
+#' `r lifecycle::badge("deprecated")`
+#'
+#' `panel.matrices()` was deprecated in synthdid 2.0.0.
+#' The formula interface [synthdid()] handles this conversion internally.
+#'
 #' Converts a data set in panel form to matrix format required by synthdid estimators.
 #' A typical long panel date set looks like \[unit, time, outcome, treatment\]. Synthdid
 #' requires a balanced panel with simultaneous adoption of treatment: each unit must be observed
@@ -62,20 +68,12 @@ pairwise.sum.decreasing <- function(x, y) {
 #' @return A list with entries `Y`: the data matrix, `N0`: the number of control units, `T0`:
 #'  the number of time periods before treatment, `W`: the matrix of treatment indicators.
 #'
-#' @examples
-#' \donttest{
-#' # Load tobacco sales in long panel format.
-#' data("california_prop99")
-#' # Transform to N*T matrix format required for synthdid,
-#' # where N is the number of units and T the time periods.
-#' setup <- panel.matrices(california_prop99, unit = 1, time = 2, outcome = 3, treatment = 4)
-#'
-#' # Compute synthdid estimate
-#' synthdid_estimate(setup$Y, setup$N0, setup$T0)
-#' }
-#'
+#' @keywords internal
 #' @export
 panel.matrices <- function(panel, unit = 1, time = 2, outcome = 3, treatment = 4, treated.last = TRUE) {
+  lifecycle::deprecate_soft("2.0.0", "panel.matrices()",
+    details = "The formula interface `synthdid()` handles panel conversion internally."
+  )
   keep <- c(unit, time, outcome, treatment)
   if (!all(keep %in% 1:ncol(panel) | keep %in% colnames(panel))) {
     stop("Column identifiers should be either integer or column names in `panel`.")
@@ -152,19 +150,23 @@ panel.matrices <- function(panel, unit = 1, time = 2, outcome = 3, treatment = 4
 
 #' Get timesteps from panel matrix Y
 #'
+#' @description
+#' `r lifecycle::badge("deprecated")`
+#'
+#' `timesteps()` was deprecated in synthdid 2.0.0.
+#' Use the formula interface with [synthdid()] instead.
+#'
 #' timesteps are stored as colnames(Y), but column names cannot be Date objects.
 #' Instead, we use strings. If they are strings convertible to dates, return that
 #'
 #' @param Y a matrix
 #' @return its column names interpreted as Dates if possible
-#' @examples
-#' \donttest{
-#' data(california_prop99)
-#' setup <- panel.matrices(california_prop99)
-#' timesteps(setup$Y)
-#' }
+#' @keywords internal
 #' @export
 timesteps <- function(Y) {
+  lifecycle::deprecate_soft("2.0.0", "timesteps()",
+    details = "Use the formula interface with `synthdid()` instead."
+  )
   labels <- colnames(Y)
   if (is.null(labels)) {
     return(labels)
@@ -183,6 +185,7 @@ timesteps <- function(Y) {
 ## define some convenient accessors
 setOldClass("synthdid_estimate")
 setOldClass("synthdid")
+setOldClass("synthdid_staggered")
 
 #' Create a slot accessor function
 #'
@@ -303,27 +306,23 @@ random.low.rank <- function() {
 
 #' Check convergence status of synthdid estimate
 #'
+#' @description
+#' `r lifecycle::badge("deprecated")`
+#'
+#' `synthdid_converged()` was deprecated in synthdid 2.0.0.
+#' Convergence status is shown in the `print()` output of formula interface results.
+#'
 #' Lightweight function to check if the optimization converged properly.
 #' Uses information already computed during estimation (zero overhead).
 #'
 #' @param estimate A synthdid_estimate object
 #' @return Logical indicating whether optimization converged
-#' @examples
-#' \donttest{
-#' data(california_prop99)
-#' setup <- panel.matrices(california_prop99)
-#' tau.hat <- synthdid_estimate(setup$Y, setup$N0, setup$T0)
-#'
-#' # Quick convergence check
-#' synthdid_converged(tau.hat)
-#'
-#' # If FALSE, get more details
-#' if (!synthdid_converged(tau.hat)) {
-#'   synthdid_convergence_info(tau.hat)
-#' }
-#' }
+#' @keywords internal
 #' @export
 synthdid_converged <- function(estimate) {
+  lifecycle::deprecate_soft("2.0.0", "synthdid_converged()",
+    details = "Convergence status is shown in the `print()` output."
+  )
   conv <- attr(estimate, "convergence")
   if (is.null(conv)) {
     # Old estimate without convergence info
@@ -334,28 +333,23 @@ synthdid_converged <- function(estimate) {
 
 #' Get convergence diagnostics for synthdid estimate
 #'
+#' @description
+#' `r lifecycle::badge("deprecated")`
+#'
+#' `synthdid_convergence_info()` was deprecated in synthdid 2.0.0.
+#' Convergence diagnostics are shown in the `print()` and `summary()` output.
+#'
 #' Returns detailed convergence information including iteration counts
 #' and which components (lambda, omega, joint) converged.
 #'
 #' @param estimate A synthdid_estimate object
 #' @return List with convergence diagnostics
-#' @examples
-#' \donttest{
-#' data(california_prop99)
-#' setup <- panel.matrices(california_prop99)
-#' tau.hat <- synthdid_estimate(setup$Y, setup$N0, setup$T0)
-#'
-#' # Get detailed convergence diagnostics
-#' conv_info <- synthdid_convergence_info(tau.hat)
-#' print(conv_info)
-#'
-#' # Access components
-#' conv_info$lambda$iterations
-#' conv_info$omega$iterations
-#' conv_info$overall_converged
-#' }
+#' @keywords internal
 #' @export
 synthdid_convergence_info <- function(estimate) {
+  lifecycle::deprecate_soft("2.0.0", "synthdid_convergence_info()",
+    details = "Convergence diagnostics are shown in the `print()` and `summary()` output."
+  )
   conv <- attr(estimate, "convergence")
   if (is.null(conv)) {
     message("This estimate does not have convergence information.")
@@ -446,6 +440,12 @@ print.synthdid_convergence <- function(x, ...) {
 
 #' Estimate memory requirements for synthdid computation
 #'
+#' @description
+#' `r lifecycle::badge("deprecated")`
+#'
+#' `synthdid_memory_estimate()` was deprecated in synthdid 2.0.0.
+#' Use the formula interface with [synthdid()] instead.
+#'
 #' Provides rough estimates of peak memory usage for different synthdid operations.
 #' Useful for assessing feasibility of large-scale computations before running them.
 #'
@@ -456,6 +456,7 @@ print.synthdid_convergence <- function(x, ...) {
 #' @param include_se Logical. Include memory for SE computation (default: TRUE)
 #'
 #' @return List with memory estimates in GB for different components
+#' @keywords internal
 #' @export
 #'
 #' @examples
@@ -469,6 +470,9 @@ print.synthdid_convergence <- function(x, ...) {
 synthdid_memory_estimate <- function(N, T, K = 0,
                                      replications = SYNTHDID_SE_REPLICATIONS_DEFAULT,
                                      include_se = TRUE) {
+  lifecycle::deprecate_soft("2.0.0", "synthdid_memory_estimate()",
+    details = "Use the formula interface with `synthdid()` instead."
+  )
   if (N <= 0 || is.na(N)) {
     stop("N should be positive scalar.")
   }

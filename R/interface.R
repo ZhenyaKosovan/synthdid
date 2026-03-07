@@ -17,12 +17,23 @@
 #'   the first two columns are unit and time.
 #' @param method Estimation method: "synthdid" (default), "sc" (synthetic control),
 #'   or "did" (difference-in-differences).
+#' @param adoption Treatment adoption pattern: \code{"auto"} (default) detects
+#'   whether adoption is simultaneous or staggered, \code{"simultaneous"} forces
+#'   the classic single-cohort estimator, \code{"staggered"} forces the
+#'   staggered-adoption estimator from Porreca (2022).
 #' @param se Logical. If TRUE, compute standard errors. Default is FALSE.
 #' @param se_method Standard error method: "bootstrap" (default), "jackknife", or "placebo".
 #' @param se_replications Number of replications for bootstrap/placebo standard errors.
-#' @param ... Additional arguments passed to \code{synthdid_estimate()}.
+#' @param ... Additional arguments passed to \code{synthdid_estimate()} (for
+#'   simultaneous adoption) or \code{synthdid_staggered_estimate()} (for
+#'   staggered adoption).
 #'
-#' @return An object of class \code{c("synthdid", "synthdid_estimate")} with components:
+#' @return For simultaneous adoption, an object of class
+#'   \code{c("synthdid", "synthdid_estimate")}. For staggered adoption, an
+#'   object of class \code{"synthdid_staggered"}. Both support standard methods
+#'   (\code{print}, \code{summary}, \code{coef}, \code{confint}, \code{plot}).
+#'
+#'   Simultaneous adoption objects have components:
 #'   \item{coefficients}{Treatment effect estimate}
 #'   \item{call}{The matched call}
 #'   \item{formula}{The formula used}
@@ -76,6 +87,7 @@ synthdid <- function(formula,
                      data,
                      index = NULL,
                      method = c("synthdid", "sc", "did"),
+                     adoption = c("auto", "simultaneous", "staggered"),
                      se = FALSE,
                      se_method = c("bootstrap", "jackknife", "placebo"),
                      se_replications = SYNTHDID_SE_REPLICATIONS_DEFAULT,
@@ -85,6 +97,7 @@ synthdid <- function(formula,
 
   # Match arguments
   method <- match.arg(method)
+  adoption <- match.arg(adoption)
   se_method <- match.arg(se_method)
 
   # Validate inputs
@@ -123,55 +136,109 @@ synthdid <- function(formula,
     stop("Variables not found in data: ", paste(missing_vars, collapse = ", "))
   }
 
-  # Create panel structure
-  panel_data <- data[, c(unit_var, time_var, outcome_var, treatment_var), drop = FALSE]
-  setup <- panel.matrices(panel_data,
-    unit = unit_var,
-    time = time_var,
-    outcome = outcome_var,
-    treatment = treatment_var
-  )
+  # Build panel matrices (Y and W) from long-format data
+  panel_mats <- build_panel_matrices(data, unit_var, time_var, outcome_var,
+                                     treatment_var)
+  Y <- panel_mats$Y
+  W <- panel_mats$W
 
-  # Handle covariates if present
-  X <- array(dim = c(dim(setup$Y), 0))
-  if (length(covariate_vars) > 0) {
-    # Extract covariate matrices
-    X_list <- lapply(covariate_vars, function(cov) {
-      cov_panel <- data[, c(unit_var, time_var, cov, treatment_var), drop = FALSE]
-      cov_setup <- panel.matrices(cov_panel,
-        unit = unit_var,
-        time = time_var,
-        outcome = cov,
-        treatment = treatment_var
-      )
-      cov_setup$Y
-    })
-    X <- array(unlist(X_list), dim = c(dim(setup$Y), length(covariate_vars)))
+  # Detect adoption pattern
+  is_staggered <- detect_staggered(W)
+  if (adoption == "auto") {
+    adoption <- if (is_staggered) "staggered" else "simultaneous"
+  } else if (adoption == "simultaneous" && is_staggered) {
+    stop("adoption = 'simultaneous' but treatment adoption is staggered. ",
+         "Use adoption = 'staggered' or adoption = 'auto'.")
   }
 
-  # Call appropriate estimator
-  estimate <- switch(method,
-    "synthdid" = synthdid_estimate(setup$Y, setup$N0, setup$T0,
-      X = X,
-      estimate_se = se,
-      se_method = se_method,
-      se_replications = se_replications,
-      ...
-    ),
-    "sc" = sc_estimate(setup$Y, setup$N0, setup$T0,
-      X = X,
-      estimate_se = se,
-      se_method = se_method,
-      se_replications = se_replications,
-      ...
-    ),
-    "did" = did_estimate(setup$Y, setup$N0, setup$T0,
-      X = X,
-      estimate_se = se,
-      se_method = se_method,
-      se_replications = se_replications,
-      ...
+  # Handle covariates if present
+  X <- NULL
+  if (length(covariate_vars) > 0) {
+    X_list <- lapply(covariate_vars, function(cov) {
+      cov_mats <- build_panel_matrices(data, unit_var, time_var, cov,
+                                       treatment_var)
+      cov_mats$Y
+    })
+    X <- array(unlist(X_list), dim = c(dim(Y), length(covariate_vars)))
+  }
+
+  # Route to appropriate estimator
+
+  if (adoption == "staggered") {
+    # Staggered adoption: use Porreca-style decomposition
+    X_arg <- if (!is.null(X)) X else NULL
+    estimate <- synthdid_staggered_estimate(
+      Y, W, X = X_arg, method = method, ...
     )
+
+    # Attach formula interface metadata
+    attr(estimate, "call") <- cl
+    attr(estimate, "formula") <- formula
+    attr(estimate, "terms") <- terms(formula)
+    attr(estimate, "index") <- setNames(index, c("unit", "time"))
+    attr(estimate, "data_info") <- list(
+      outcome = outcome_var,
+      treatment = treatment_var,
+      covariates = covariate_vars,
+      n_units = nrow(Y),
+      n_periods = ncol(Y),
+      adoption = "staggered"
+    )
+
+    # Handle SE for staggered
+    if (se) {
+      se_val <- vcov.synthdid_staggered(estimate, method = se_method,
+                                         replications = se_replications)
+      attr(estimate, "se") <- sqrt(c(se_val))
+      attr(estimate, "se_method") <- se_method
+    }
+
+    return(estimate)
+  }
+
+  # Simultaneous adoption: existing path
+  # Determine N0 and T0 from the simultaneous panel
+  W_binary <- W != 0
+  w <- rowSums(W_binary) > 0
+  T0 <- unname(which(colSums(W_binary) > 0)[1] - 1)
+  N0 <- sum(!w)
+
+  # Sort: controls first
+  unit_order <- order(W[, T0 + 1], rownames(Y))
+  Y <- Y[unit_order, ]
+  W <- W[unit_order, ]
+
+  X_sim <- array(dim = c(dim(Y), 0))
+  if (!is.null(X)) {
+    X_sim <- X[unit_order, , , drop = FALSE]
+  }
+
+  # Call appropriate estimator (suppress deprecation warning for internal use)
+  estimate <- withCallingHandlers(
+    switch(method,
+      "synthdid" = synthdid_estimate(Y, N0, T0,
+        X = X_sim,
+        estimate_se = se,
+        se_method = se_method,
+        se_replications = se_replications,
+        ...
+      ),
+      "sc" = sc_estimate(Y, N0, T0,
+        X = X_sim,
+        estimate_se = se,
+        se_method = se_method,
+        se_replications = se_replications,
+        ...
+      ),
+      "did" = did_estimate(Y, N0, T0,
+        X = X_sim,
+        estimate_se = se,
+        se_method = se_method,
+        se_replications = se_replications,
+        ...
+      )
+    ),
+    lifecycle_warning_deprecated = function(cnd) invokeRestart("muffleWarning")
   )
 
   # Enrich the object with formula interface attributes
@@ -183,13 +250,85 @@ synthdid <- function(formula,
     outcome = outcome_var,
     treatment = treatment_var,
     covariates = covariate_vars,
-    n_units = nrow(setup$Y),
-    n_periods = ncol(setup$Y)
+    n_units = nrow(Y),
+    n_periods = ncol(Y),
+    adoption = "simultaneous"
   )
 
   # Update class
   class(estimate) <- c("synthdid", class(estimate))
   return(estimate)
+}
+
+
+#' Build panel matrices from long-format data
+#'
+#' Converts long-format panel data into Y (outcome) and W (treatment) matrices
+#' without requiring simultaneous adoption. This is the staggered-friendly
+#' replacement for the internal use of \code{panel.matrices()}.
+#'
+#' @param data A data.frame in long panel format.
+#' @param unit Name of the unit column.
+#' @param time Name of the time column.
+#' @param outcome Name of the outcome column.
+#' @param treatment Name of the treatment column.
+#' @return A list with \code{Y} (outcome matrix) and \code{W} (treatment matrix),
+#'   both with units as rows and time as columns.
+#' @keywords internal
+build_panel_matrices <- function(data, unit, time, outcome, treatment) {
+  panel <- as.data.frame(data[, c(unit, time, outcome, treatment), drop = FALSE])
+
+  if (anyNA(panel)) {
+    stop("Missing values in panel data.")
+  }
+  if (!all(panel[[treatment]] %in% c(0, 1))) {
+    stop("Treatment variable must be binary (0/1).")
+  }
+
+  # Convert factors/dates to character for table operations
+  panel <- data.frame(
+    lapply(panel, function(col) {
+      if (is.factor(col) || inherits(col, "Date")) as.character(col) else col
+    }),
+    stringsAsFactors = FALSE
+  )
+
+  # Check balanced panel
+  val <- as.vector(table(panel[[unit]], panel[[time]]))
+  if (!all(val == 1)) {
+    stop("Panel must be balanced: every unit must be observed at every time period.")
+  }
+
+  panel <- panel[order(panel[[unit]], panel[[time]]), ]
+  units <- unique(panel[[unit]])
+  times <- unique(panel[[time]])
+  num_units <- length(units)
+  num_times <- length(times)
+
+  Y <- matrix(panel[[outcome]], num_units, num_times, byrow = TRUE,
+              dimnames = list(units, times))
+  W <- matrix(panel[[treatment]], num_units, num_times, byrow = TRUE,
+              dimnames = list(units, times))
+
+  list(Y = Y, W = W)
+}
+
+
+#' Detect whether treatment adoption is staggered
+#'
+#' Returns \code{TRUE} if units adopt treatment at different times,
+#' \code{FALSE} if all treated units adopt simultaneously.
+#'
+#' @param W Binary treatment matrix (units x time).
+#' @return Logical scalar.
+#' @keywords internal
+detect_staggered <- function(W) {
+  first_treat <- compute_first_treat_time(W)
+  treated_times <- first_treat[is.finite(first_treat)]
+  if (length(treated_times) == 0) {
+    stop("No treated units found in the panel.")
+  }
+  length(unique(treated_times)) > 1
 }
 
 
@@ -564,7 +703,10 @@ predict.synthdid <- function(object,
     return(treated_outcomes)
   } else {
     # Treatment effect by period (effect curve)
-    return(synthdid_effect_curve(object))
+    return(withCallingHandlers(
+      synthdid_effect_curve(object),
+      lifecycle_warning_deprecated = function(cnd) invokeRestart("muffleWarning")
+    ))
   }
 }
 

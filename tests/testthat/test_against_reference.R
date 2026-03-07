@@ -4,6 +4,7 @@ max.iter <- 1e6
 
 test_that("synthdid point estimate agrees with the reference implementation", {
   skip_if_not_installed("CVXR")
+  withr::local_options(lifecycle_verbosity = "quiet")
   data(california_prop99)
   setup <- panel.matrices(california_prop99)
   expect_equal(
@@ -21,6 +22,7 @@ test_that("synthdid point estimate agrees with the reference implementation", {
 
 test_that("sc point estimate agrees with the reference implementation", {
   skip_if_not_installed("CVXR")
+  withr::local_options(lifecycle_verbosity = "quiet")
   data(california_prop99)
   setup <- panel.matrices(california_prop99)
   expect_equal(
@@ -38,6 +40,7 @@ test_that("sc point estimate agrees with the reference implementation", {
 
 test_that("did point estimate agrees with the reference implementation", {
   skip_if_not_installed("CVXR")
+  withr::local_options(lifecycle_verbosity = "quiet")
   data(california_prop99)
   setup <- panel.matrices(california_prop99)
   expect_equal(

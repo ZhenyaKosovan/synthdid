@@ -1,4 +1,5 @@
 test_that("a simple workflow doesn't error", {
+  withr::local_options(lifecycle_verbosity = "quiet")
   setup <- random.low.rank()
   tau.hat <- synthdid_estimate(setup$Y, setup$N0, setup$T0)
   se <- sqrt(vcov(tau.hat, replications = 10))
@@ -13,6 +14,7 @@ test_that("a simple workflow doesn't error", {
 })
 
 test_that("plotting doesn't error with (i) dates as colnames (ii) spaghetti units", {
+  withr::local_options(lifecycle_verbosity = "quiet")
   data(california_prop99)
   california_prop99$date <- as.Date(sprintf("%04d/%02d/%02d", california_prop99$Year, 1, 1))
   setup <- panel.matrices(california_prop99, time = "date")
@@ -24,6 +26,7 @@ test_that("plotting doesn't error with (i) dates as colnames (ii) spaghetti unit
 })
 
 test_that("adjustment for covariates works: random noise less influential if passed as covariate", {
+  withr::local_options(lifecycle_verbosity = "quiet")
   setup <- random.low.rank()
   X <- setup$Y - setup$L
 
@@ -36,6 +39,7 @@ test_that("adjustment for covariates works: random noise less influential if pas
 })
 
 test_that("column/row/scaling invariances hold with default options", {
+  withr::local_options(lifecycle_verbosity = "quiet")
   # Test that three types of invariances hold, for details see
   # https://github.com/synth-inference/synthdid/issues/38
   estimators <- list(
@@ -118,6 +122,7 @@ test_that("column/row/scaling invariances hold with default options", {
 })
 
 test_that("treated effect shifts correctly with scalar shifts to the 4 blocks", {
+  withr::local_options(lifecycle_verbosity = "quiet")
   # Test that four types of invariances hold, for details see
   # https://github.com/synth-inference/synthdid/issues/43
   estimators <- list(sc_estimate, did_estimate, synthdid_estimate)

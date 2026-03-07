@@ -13,16 +13,9 @@ synthdid_effect_curve(estimate)
 A vector of treatment effects for each post-treatment period
 }
 \description{
-Outputs the effect curve that was averaged to produce our estimate
-}
-\examples{
-\donttest{
-data(california_prop99)
-setup <- panel.matrices(california_prop99)
-tau.hat <- synthdid_estimate(setup$Y, setup$N0, setup$T0)
+\ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#deprecated}{\figure{lifecycle-deprecated.svg}{options: alt='[Deprecated]'}}}{\strong{[Deprecated]}}
 
-# Get effect curve over time
-effect_curve <- synthdid_effect_curve(tau.hat)
-plot(effect_curve, type = "l", xlab = "Post-treatment period", ylab = "Effect")
+\code{synthdid_effect_curve()} was deprecated in synthdid 2.0.0.
+Use \code{predict(fit, type = "effect")} instead.
 }
-}
+\keyword{internal}

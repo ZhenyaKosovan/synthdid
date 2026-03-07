@@ -1,4 +1,11 @@
 #' Plots treated and synthetic control trajectories and overlays a 2x2 diff-in-diff diagram of our estimator.
+#'
+#' @description
+#' `r lifecycle::badge("deprecated")`
+#'
+#' `synthdid_plot()` was deprecated in synthdid 2.0.0.
+#' Use `plot()` on a synthdid object instead.
+#'
 #' In this overlay, the treatment effect is indicated by an arrow.
 #' The weights lambda defining our synthetic pre-treatment time period are plotted below.
 #' If a list of estimates is passed, plots all of them. By default, does this in different facets.
@@ -76,6 +83,7 @@
 #' p <- synthdid_plot(tau.hat, trajectory.alpha = 0.7)
 #' p + ggplot2::ggtitle("California Proposition 99 Analysis")
 #' }
+#' @keywords internal
 #' @export synthdid_plot
 synthdid_plot <- function(estimates, treated.name = "treated", control.name = "synthetic control",
                           spaghetti.units = c(), spaghetti.matrices = NULL,
@@ -96,6 +104,7 @@ synthdid_plot <- function(estimates, treated.name = "treated", control.name = "s
                           spaghetti.line.alpha = SYNTHDID_SPAGHETTI_LINE_ALPHA_DEFAULT,
                           spaghetti.label.alpha = SYNTHDID_SPAGHETTI_LABEL_ALPHA_DEFAULT,
                           se.method = "jackknife", alpha.multiplier = NULL) {
+  lifecycle::deprecate_soft("2.0.0", "synthdid_plot()", "plot()")
   if (requireNamespace("ggplot2", quietly = TRUE)) {
     .ignore <- tryCatch(attachNamespace("ggplot2"), error = function(e) e)
   } else {
@@ -393,34 +402,52 @@ synthdid_plot <- function(estimates, treated.name = "treated", control.name = "s
 
 
 #' For our estimator and a placebo, plots treated and synthetic control trajectories and overlays a 2x2 diff-in-diff diagram.
+#'
+#' @description
+#' `r lifecycle::badge("deprecated")`
+#'
+#' `synthdid_placebo_plot()` was deprecated in synthdid 2.0.0.
+#' Use the formula interface with [synthdid()] instead.
+#'
 #' Requires ggplot2
 #' @param estimate, as output by synthdid_estimate.
 #' @param overlay, binary, indicates whether plots should be overlaid or shown in different facets. Defaults to FALSE.
 #' @param treated.fraction as in synthdid_placebo
 #' @return A ggplot2 object showing the estimate and placebo comparison.
-#' @examples
-#' \donttest{
-#' data(california_prop99)
-#' setup <- panel.matrices(california_prop99)
-#' tau.hat <- synthdid_estimate(setup$Y, setup$N0, setup$T0)
-#' synthdid_placebo_plot(tau.hat, treated.fraction = 0.5)
-#' }
+#' @keywords internal
 #' @export synthdid_placebo_plot
 synthdid_placebo_plot <- function(estimate, overlay = FALSE, treated.fraction = NULL) {
+  lifecycle::deprecate_soft("2.0.0", "synthdid_placebo_plot()",
+    details = "Use the formula interface with `synthdid()` instead."
+  )
   if (requireNamespace("ggplot2", quietly = TRUE)) {
     .ignore <- tryCatch(attachNamespace("ggplot2"), error = function(e) e)
   } else {
     stop("Plotting requires the package `ggplot2`. Install it to use this function.")
   }
-  estimates <- list(estimate = estimate, placebo = synthdid_placebo(estimate, treated.fraction = treated.fraction))
-  synthdid_plot(estimates, facet = if (overlay) {
-    c(1, 1)
-  } else {
-    NULL
-  })
+  estimates <- withCallingHandlers(
+    list(estimate = estimate, placebo = synthdid_placebo(estimate, treated.fraction = treated.fraction)),
+    lifecycle_warning_deprecated = function(cnd) invokeRestart("muffleWarning")
+  )
+  withCallingHandlers(
+    synthdid_plot(estimates, facet = if (overlay) {
+      c(1, 1)
+    } else {
+      NULL
+    }),
+    lifecycle_warning_deprecated = function(cnd) invokeRestart("muffleWarning")
+  )
 }
 
-#' Plots unit by unit difference-in-differences. Dot size indicates the weights omega_i
+#' Plots unit by unit difference-in-differences.
+#'
+#' @description
+#' `r lifecycle::badge("deprecated")`
+#'
+#' `synthdid_units_plot()` was deprecated in synthdid 2.0.0.
+#' Use the formula interface with [synthdid()] instead.
+#'
+#' Dot size indicates the weights omega_i
 #' used in the average that yields our treatment effect estimate.
 #' This estimate and endpoints of a 95% CI are plotted as horizontal lines.
 #' Requires ggplot2
@@ -431,27 +458,15 @@ synthdid_placebo_plot <- function(estimate, overlay = FALSE, treated.fraction = 
 #'        Defaults to 'jackknife' for speed. If 'none', don't plot a CI.
 #' @param units a list of control units --- elements of rownames(Y) --- to plot differences for. Defaults to NULL, meaning all of them.
 #' @return A ggplot2 object showing unit-level treatment effect estimates.
-#' @examples
-#' \donttest{
-#' data(california_prop99)
-#' setup <- panel.matrices(california_prop99)
-#' tau.hat <- synthdid_estimate(setup$Y, setup$N0, setup$T0)
-#'
-#' # Plot all units
-#' synthdid_units_plot(tau.hat)
-#'
-#' # Plot specific units only
-#' # synthdid_units_plot(tau.hat, units = rownames(setup$Y)[1:10])
-#'
-#' # Compare multiple estimates
-#' tau.sc <- sc_estimate(setup$Y, setup$N0, setup$T0)
-#' synthdid_units_plot(list(tau.sc, tau.hat))
-#' }
+#' @keywords internal
 #' @export synthdid_units_plot
 synthdid_units_plot <- function(estimates,
                                 negligible.threshold = SYNTHDID_NEGLIGIBLE_WEIGHT_THRESHOLD,
                                 negligible.alpha = SYNTHDID_NEGLIGIBLE_ALPHA_DEFAULT,
                                 se.method = "jackknife", units = NULL) {
+  lifecycle::deprecate_soft("2.0.0", "synthdid_units_plot()",
+    details = "Use the formula interface with `synthdid()` instead."
+  )
   if (requireNamespace("ggplot2", quietly = TRUE)) {
     .ignore <- tryCatch(attachNamespace("ggplot2"), error = function(e) e)
   } else {
@@ -508,23 +523,26 @@ synthdid_units_plot <- function(estimates,
 }
 
 
-#' A diagnostic plot for sc.weight.fw.covariates. Plots the objective function, regularized RMSE,
+#' A diagnostic plot for sc.weight.fw.covariates.
+#'
+#' @description
+#' `r lifecycle::badge("deprecated")`
+#'
+#' `synthdid_rmse_plot()` was deprecated in synthdid 2.0.0.
+#' Use the formula interface with [synthdid()] instead.
+#'
+#' Plots the objective function, regularized RMSE,
 #' as a function of the number of Frank-Wolfe / Gradient steps taken.
 #' Requires ggplot2
 #' @param estimates, a list of estimates output by synthdid_estimate. Or a single estimate.
 #' @return A ggplot2 object showing the convergence diagnostics.
-#' @examples
-#' \donttest{
-#' data(california_prop99)
-#' setup <- panel.matrices(california_prop99)
-#' tau.hat <- synthdid_estimate(setup$Y, setup$N0, setup$T0)
-#' synthdid_rmse_plot(tau.hat)
-#' }
+#' @keywords internal
 #' @export synthdid_rmse_plot
 synthdid_rmse_plot <- function(estimates) { # pass an estimate or list of estimates
-  if (requireNamespace("ggplot2", quietly = TRUE)) {
-    .ignore <- tryCatch(attachNamespace("ggplot2"), error = function(e) e)
-  } else {
+  lifecycle::deprecate_soft("2.0.0", "synthdid_rmse_plot()",
+    details = 'Use plot(est, type = "diagnostic", subtype = "convergence") instead.'
+  )
+  if (!requireNamespace("ggplot2", quietly = TRUE)) {
     stop("Plotting requires the package `ggplot2`. Install it to use this function.")
   }
   if (inherits(estimates, "synthdid_estimate")) {
@@ -533,6 +551,16 @@ synthdid_rmse_plot <- function(estimates) { # pass an estimate or list of estima
   if (is.null(names(estimates))) {
     names(estimates) <- sprintf("estimate %d", 1:length(estimates))
   }
+  # Single estimate: delegate to new engine
+  if (length(estimates) == 1) {
+    return(withCallingHandlers(
+      synthdid_render_plot(estimates[[1]], type = "diagnostic",
+                           subtype = "convergence"),
+      lifecycle_warning_deprecated = function(cnd) invokeRestart("muffleWarning")
+    ))
+  }
+  # Multiple estimates: build combined convergence plot (legacy behavior)
+  .ignore <- tryCatch(attachNamespace("ggplot2"), error = function(e) e)
   rmse <- lapply(estimates, function(est) {
     sqrt(attr(est, "weights")$vals)
   })
@@ -554,8 +582,26 @@ synthdid_rmse_plot <- function(estimates) { # pass an estimate or list of estima
 }
 
 #' Plot a synthdid object
+#'
+#' By default, produces a clean trajectory plot using the new plot engine.
+#' If legacy arguments (e.g. \code{spaghetti.units}, \code{facet},
+#' \code{overlay}, \code{se.method}) are detected, silently delegates to
+#' the deprecated \code{synthdid_plot()} to preserve backward compatibility.
+#'
 #' @param x The object to plot
-#' @param ... Additional arguments (currently ignored).
+#' @param type Plot type: \code{"trajectory"} (default), \code{"weights"},
+#'   \code{"effect"}, or \code{"diagnostic"}.
+#' @param mode Display mode: \code{"auto"} (default, picks based on panel
+#'   size), \code{"full"}, or \code{"top_k"}.
+#' @param top_k Number of top-weighted control units to show in top_k mode.
+#' @param subtype For diagnostic plots: \code{"both"} (default),
+#'   \code{"convergence"}, or \code{"fit"}.
+#' @param include_controls Logical; if TRUE, show individual control unit
+#'   trajectories behind the synthetic control line.
+#' @param show_gap Logical; if TRUE, add a gap (treated - synthetic)
+#'   sub-panel below the trajectory plot. Requires patchwork.
+#' @param ... Additional arguments. If any legacy argument names are detected,
+#'   the call is forwarded to \code{synthdid_plot()}.
 #' @return A ggplot2 object.
 #' @examples
 #' \donttest{
@@ -563,14 +609,48 @@ synthdid_rmse_plot <- function(estimates) { # pass an estimate or list of estima
 #' setup <- panel.matrices(california_prop99)
 #' tau.hat <- synthdid_estimate(setup$Y, setup$N0, setup$T0)
 #' plot(tau.hat)
+#' plot(tau.hat, type = "weights")
+#' plot(tau.hat, type = "effect")
 #' }
 #' @method plot synthdid_estimate
 #' @export
-plot.synthdid_estimate <- function(x, ...) {
-  if (requireNamespace("ggplot2", quietly = TRUE)) {
-    .ignore <- tryCatch(attachNamespace("ggplot2"), error = function(e) e)
-  } else {
+plot.synthdid_estimate <- function(x, type = "trajectory", mode = "auto",
+                                   top_k = NULL, subtype = "both",
+                                   include_controls = FALSE,
+                                   show_gap = FALSE,
+                                   ...) {
+  if (!requireNamespace("ggplot2", quietly = TRUE)) {
     stop("Plotting requires the package `ggplot2`. Install it to use this function.")
   }
-  synthdid_plot(x, ...)
+
+  # Legacy argument detection: delegate to old synthdid_plot() for backward compat
+  legacy_args <- c(
+    "spaghetti.units", "spaghetti.matrices", "facet", "facet.vertical",
+    "lambda.comparable", "overlay", "lambda.plot.scale",
+    "trajectory.linetype", "effect.curvature", "line.width",
+    "guide.linetype", "point.size", "trajectory.alpha", "diagram.alpha",
+    "effect.alpha", "onset.alpha", "ci.alpha", "spaghetti.line.width",
+    "spaghetti.label.size", "spaghetti.line.alpha", "spaghetti.label.alpha",
+    "se.method", "alpha.multiplier", "treated.name", "control.name"
+  )
+  dots <- list(...)
+  if (any(names(dots) %in% legacy_args)) {
+    .ignore <- tryCatch(attachNamespace("ggplot2"), error = function(e) e)
+    return(withCallingHandlers(
+      synthdid_plot(x, ...),
+      lifecycle_warning_deprecated = function(cnd) invokeRestart("muffleWarning")
+    ))
+  }
+
+  type <- match.arg(type, c("trajectory", "weights", "effect", "diagnostic"))
+  synthdid_render_plot(
+    x,
+    type = type,
+    mode = mode,
+    top_k = top_k,
+    subtype = subtype,
+    include_controls = include_controls,
+    show_gap = show_gap,
+    ...
+  )
 }

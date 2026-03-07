@@ -13,13 +13,12 @@ timesteps(Y)
 its column names interpreted as Dates if possible
 }
 \description{
+\ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#deprecated}{\figure{lifecycle-deprecated.svg}{options: alt='[Deprecated]'}}}{\strong{[Deprecated]}}
+
+\code{timesteps()} was deprecated in synthdid 2.0.0.
+Use the formula interface with \code{\link[=synthdid]{synthdid()}} instead.
+
 timesteps are stored as colnames(Y), but column names cannot be Date objects.
 Instead, we use strings. If they are strings convertible to dates, return that
 }
-\examples{
-\donttest{
-data(california_prop99)
-setup <- panel.matrices(california_prop99)
-timesteps(setup$Y)
-}
-}
+\keyword{internal}

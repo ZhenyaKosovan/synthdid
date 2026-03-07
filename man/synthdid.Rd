@@ -9,6 +9,7 @@ synthdid(
   data,
   index = NULL,
   method = c("synthdid", "sc", "did"),
+  adoption = c("auto", "simultaneous", "staggered"),
   se = FALSE,
   se_method = c("bootstrap", "jackknife", "placebo"),
   se_replications = SYNTHDID_SE_REPLICATIONS_DEFAULT,
@@ -29,16 +30,28 @@ the first two columns are unit and time.}
 \item{method}{Estimation method: "synthdid" (default), "sc" (synthetic control),
 or "did" (difference-in-differences).}
 
+\item{adoption}{Treatment adoption pattern: \code{"auto"} (default) detects
+whether adoption is simultaneous or staggered, \code{"simultaneous"} forces
+the classic single-cohort estimator, \code{"staggered"} forces the
+staggered-adoption estimator from Porreca (2022).}
+
 \item{se}{Logical. If TRUE, compute standard errors. Default is FALSE.}
 
 \item{se_method}{Standard error method: "bootstrap" (default), "jackknife", or "placebo".}
 
 \item{se_replications}{Number of replications for bootstrap/placebo standard errors.}
 
-\item{...}{Additional arguments passed to \code{synthdid_estimate()}.}
+\item{...}{Additional arguments passed to \code{synthdid_estimate()} (for
+simultaneous adoption) or \code{synthdid_staggered_estimate()} (for
+staggered adoption).}
 }
 \value{
-An object of class \code{c("synthdid", "synthdid_estimate")} with components:
+For simultaneous adoption, an object of class
+\code{c("synthdid", "synthdid_estimate")}. For staggered adoption, an
+object of class \code{"synthdid_staggered"}. Both support standard methods
+(\code{print}, \code{summary}, \code{coef}, \code{confint}, \code{plot}).
+
+Simultaneous adoption objects have components:
 \item{coefficients}{Treatment effect estimate}
 \item{call}{The matched call}
 \item{formula}{The formula used}

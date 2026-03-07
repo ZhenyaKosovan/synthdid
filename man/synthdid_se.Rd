@@ -2,7 +2,7 @@
 % Please edit documentation in R/vcov.R
 \name{synthdid_se}
 \alias{synthdid_se}
-\title{Calculate the standard error of a synthetic diff in diff estimate. Deprecated. Use vcov.synthdid_estimate.}
+\title{Calculate the standard error of a synthetic diff in diff estimate.}
 \usage{
 synthdid_se(...)
 }
@@ -13,22 +13,8 @@ synthdid_se(...)
 A scalar standard error estimate.
 }
 \description{
-Calculate the standard error of a synthetic diff in diff estimate. Deprecated. Use vcov.synthdid_estimate.
-}
-\examples{
-\donttest{
-# This function is deprecated. Use sqrt(vcov(...)) instead.
-data(california_prop99)
-setup <- panel.matrices(california_prop99)
-tau.hat <- synthdid_estimate(setup$Y, setup$N0, setup$T0)
+\ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#deprecated}{\figure{lifecycle-deprecated.svg}{options: alt='[Deprecated]'}}}{\strong{[Deprecated]}}
 
-# Deprecated approach (still works)
-se.old <- synthdid_se(tau.hat, method = "jackknife")
-
-# Preferred approach
-se.new <- sqrt(vcov(tau.hat, method = "jackknife"))
-
-# Both give the same result
-all.equal(se.old, se.new)
+\code{synthdid_se()} was deprecated in synthdid 2.0.0. Use \code{\link[=vcov]{vcov()}} instead.
 }
-}
+\keyword{internal}

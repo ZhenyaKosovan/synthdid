@@ -31,6 +31,11 @@ A list with entries \code{Y}: the data matrix, \code{N0}: the number of control 
 the number of time periods before treatment, \code{W}: the matrix of treatment indicators.
 }
 \description{
+\ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#deprecated}{\figure{lifecycle-deprecated.svg}{options: alt='[Deprecated]'}}}{\strong{[Deprecated]}}
+
+\code{panel.matrices()} was deprecated in synthdid 2.0.0.
+The formula interface \code{\link[=synthdid]{synthdid()}} handles this conversion internally.
+
 Converts a data set in panel form to matrix format required by synthdid estimators.
 A typical long panel date set looks like [unit, time, outcome, treatment]. Synthdid
 requires a balanced panel with simultaneous adoption of treatment: each unit must be observed
@@ -39,16 +44,4 @@ creates num.units x num.time.periods matrices Y and W of outcomes and treatment 
 In these matrices, columns are sorted by time, and by default (when treated.last=TRUE),
 rows for control units appear before those of treated units.
 }
-\examples{
-\donttest{
-# Load tobacco sales in long panel format.
-data("california_prop99")
-# Transform to N*T matrix format required for synthdid,
-# where N is the number of units and T the time periods.
-setup <- panel.matrices(california_prop99, unit = 1, time = 2, outcome = 3, treatment = 4)
-
-# Compute synthdid estimate
-synthdid_estimate(setup$Y, setup$N0, setup$T0)
-}
-
-}
+\keyword{internal}

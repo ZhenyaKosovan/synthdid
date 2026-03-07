@@ -7,9 +7,11 @@ Author: Dmitry Arkhangelsky [aut]
         Guido W. Imbens [aut]
         Stefan Wager [aut]
 Maintainer: David A. Hirshberg <david.a.hirshberg@gmail.com>
-Description: Estimate average treatment effects in panel data.
-    Currently provides methods only for the case that all treated units
-    adopt treatment at the same time.
+Description: Estimate average treatment effects in panel data using
+    synthetic difference-in-differences (Arkhangelsky et al. 2021).
+    Supports both simultaneous and staggered treatment adoption, with
+    the staggered estimator following the cohort decomposition approach
+    of Porreca (2022).
 Depends:
     R (>= 4.1.0)
 Imports:
@@ -22,7 +24,8 @@ Imports:
     ggplot2,
     grid,
     furrr,
-    future
+    future,
+    lifecycle
 LinkingTo:
     Rcpp,
     RcppArmadillo
@@ -46,7 +49,8 @@ Suggests:
     xtable,
     RhpcBLASctl,
     gifski,
-    patchwork
+    patchwork,
+    withr
 URL: https://zhenyakosovan.github.io/synthdid/, https://github.com/ZhenyaKosovan/synthdid
 BugReports: https://github.com/ZhenyaKosovan/synthdid/issues
 Config/testthat/edition: 3
