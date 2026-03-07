@@ -168,9 +168,10 @@ with_blas_thread_management <- function(expr) {
 
   # Inform user if thread management is active
   if (!is.null(old_state)) {
+    prev_threads <- if (is.numeric(old_state)) old_state else old_threads
     message(sprintf(
-      "Parallel processing detected: Setting BLAS to single-threaded mode (was %d threads)",
-      if (is.numeric(old_state)) old_state else old_threads %||% "unknown"
+      "Parallel processing detected: Setting BLAS to single-threaded mode (was %s threads)",
+      if (!is.null(prev_threads)) as.character(prev_threads) else "unknown"
     ))
   }
 

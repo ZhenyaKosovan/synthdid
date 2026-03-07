@@ -11,6 +11,7 @@ synthdid_render_plot(
   top_k = NULL,
   subtype = "cohort",
   include_controls = FALSE,
+  show_gap = FALSE,
   ...
 )
 }

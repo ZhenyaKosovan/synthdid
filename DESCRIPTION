@@ -21,7 +21,7 @@ Imports:
     utils,
     graphics,
     methods,
-    ggplot2,
+    ggplot2 (>= 3.4.0),
     grid,
     furrr,
     future,

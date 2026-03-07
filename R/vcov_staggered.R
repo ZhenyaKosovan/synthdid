@@ -101,9 +101,14 @@ staggered_bootstrap_se <- function(object, replications) {
   })
 
   # Drop failed replications
+  n_requested <- length(boot_estimates)
   boot_estimates <- boot_estimates[!is.na(boot_estimates)]
-  if (length(boot_estimates) < 10) {
-    warning("Fewer than 10 bootstrap replications succeeded. SE may be unreliable.")
+  n_failed <- n_requested - length(boot_estimates)
+  if (n_failed > 0 && length(boot_estimates) < n_requested / 2) {
+    warning(sprintf(
+      "%d of %d bootstrap replications failed. SE may be unreliable.",
+      n_failed, n_requested
+    ))
   }
   if (length(boot_estimates) == 0) {
     return(NA_real_)

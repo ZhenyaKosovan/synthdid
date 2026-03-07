@@ -105,16 +105,11 @@ synthdid_plot <- function(estimates, treated.name = "treated", control.name = "s
                           spaghetti.label.alpha = SYNTHDID_SPAGHETTI_LABEL_ALPHA_DEFAULT,
                           se.method = "jackknife", alpha.multiplier = NULL) {
   lifecycle::deprecate_soft("2.0.0", "synthdid_plot()", "plot()")
-  if (requireNamespace("ggplot2", quietly = TRUE)) {
-    .ignore <- tryCatch(attachNamespace("ggplot2"), error = function(e) e)
-  } else {
-    stop("Plotting requires the package `ggplot2`. Install it to use this function.")
-  }
   if (inherits(estimates, "synthdid_estimate")) {
     estimates <- list(estimates)
   }
   if (is.null(names(estimates))) {
-    names(estimates) <- sprintf("estimate %d", 1:length(estimates))
+    names(estimates) <- sprintf("estimate %d", seq_along(estimates))
   }
   if (is.null(alpha.multiplier)) {
     alpha.multiplier <- rep(1, length(estimates))
@@ -128,11 +123,11 @@ synthdid_plot <- function(estimates, treated.name = "treated", control.name = "s
   groups <- factor(c(control, treated), labels = c(control.name, treated.name))
   estimate.factors <- factor(1:(length(estimates) + 1), labels = c(treated.name, names(estimates)))
   facet_factors <- if (is.null(facet)) {
-    factor(1:length(estimates), labels = names(estimates))
+    factor(seq_along(estimates), labels = names(estimates))
   } else {
-    factor(facet, levels = 1:length(unique(facet)), labels = unique(facet))
+    factor(facet, levels = seq_along(unique(facet)), labels = unique(facet))
   }
-  grid <- expand.grid(estimate = 1:length(estimates), overlay = 1:length(overlay))
+  grid <- expand.grid(estimate = seq_along(estimates), overlay = seq_along(overlay))
   plot.descriptions <- lapply(1:nrow(grid), function(row) {
     est <- estimates[[grid$estimate[row]]]
     over <- overlay[grid$overlay[row]]
@@ -159,7 +154,7 @@ synthdid_plot <- function(estimates, treated.name = "treated", control.name = "s
     if (!is.null(attr(est, "overlay"))) {
       over <- attr(est, "overlay")
     }
-    is.sc <- all(weights$lambda == 0) || over == 1
+    is.sc <- all(abs(weights$lambda) < SYNTHDID_EPSILON) || over == 1
 
     intercept.offset <- over * c((omega.target - omega.synth) %*% Y %*% lambda.synth)
     obs.trajectory <- as.numeric(omega.target %*% Y)
@@ -420,11 +415,6 @@ synthdid_placebo_plot <- function(estimate, overlay = FALSE, treated.fraction = 
   lifecycle::deprecate_soft("2.0.0", "synthdid_placebo_plot()",
     details = "Use the formula interface with `synthdid()` instead."
   )
-  if (requireNamespace("ggplot2", quietly = TRUE)) {
-    .ignore <- tryCatch(attachNamespace("ggplot2"), error = function(e) e)
-  } else {
-    stop("Plotting requires the package `ggplot2`. Install it to use this function.")
-  }
   estimates <- withCallingHandlers(
     list(estimate = estimate, placebo = synthdid_placebo(estimate, treated.fraction = treated.fraction)),
     lifecycle_warning_deprecated = function(cnd) invokeRestart("muffleWarning")
@@ -467,18 +457,13 @@ synthdid_units_plot <- function(estimates,
   lifecycle::deprecate_soft("2.0.0", "synthdid_units_plot()",
     details = "Use the formula interface with `synthdid()` instead."
   )
-  if (requireNamespace("ggplot2", quietly = TRUE)) {
-    .ignore <- tryCatch(attachNamespace("ggplot2"), error = function(e) e)
-  } else {
-    stop("Plotting requires the package `ggplot2`. Install it to use this function.")
-  }
   if (inherits(estimates, "synthdid_estimate")) {
     estimates <- list(estimates)
   }
   if (is.null(names(estimates))) {
-    names(estimates) <- sprintf("estimate %d", 1:length(estimates))
+    names(estimates) <- sprintf("estimate %d", seq_along(estimates))
   }
-  plot.data <- do.call(rbind, lapply(1:length(estimates), function(ee) {
+  plot.data <- do.call(rbind, lapply(seq_along(estimates), function(ee) {
     estimate <- estimates[[ee]]
     setup <- attr(estimate, "setup")
     weights <- attr(estimate, "weights")
@@ -542,14 +527,11 @@ synthdid_rmse_plot <- function(estimates) { # pass an estimate or list of estima
   lifecycle::deprecate_soft("2.0.0", "synthdid_rmse_plot()",
     details = 'Use plot(est, type = "diagnostic", subtype = "convergence") instead.'
   )
-  if (!requireNamespace("ggplot2", quietly = TRUE)) {
-    stop("Plotting requires the package `ggplot2`. Install it to use this function.")
-  }
   if (inherits(estimates, "synthdid_estimate")) {
     estimates <- list(estimates)
   }
   if (is.null(names(estimates))) {
-    names(estimates) <- sprintf("estimate %d", 1:length(estimates))
+    names(estimates) <- sprintf("estimate %d", seq_along(estimates))
   }
   # Single estimate: delegate to new engine
   if (length(estimates) == 1) {
@@ -560,14 +542,13 @@ synthdid_rmse_plot <- function(estimates) { # pass an estimate or list of estima
     ))
   }
   # Multiple estimates: build combined convergence plot (legacy behavior)
-  .ignore <- tryCatch(attachNamespace("ggplot2"), error = function(e) e)
   rmse <- lapply(estimates, function(est) {
     sqrt(attr(est, "weights")$vals)
   })
   plot.data <- data.frame(
     rmse = unlist(rmse),
     iteration = unlist(lapply(rmse, function(vals) {
-      1:length(vals)
+      seq_along(vals)
     })),
     method = unlist(mapply(function(vals, name) {
       rep(factor(name), length(vals))
@@ -635,7 +616,6 @@ plot.synthdid_estimate <- function(x, type = "trajectory", mode = "auto",
   )
   dots <- list(...)
   if (any(names(dots) %in% legacy_args)) {
-    .ignore <- tryCatch(attachNamespace("ggplot2"), error = function(e) e)
     return(withCallingHandlers(
       synthdid_plot(x, ...),
       lifecycle_warning_deprecated = function(cnd) invokeRestart("muffleWarning")

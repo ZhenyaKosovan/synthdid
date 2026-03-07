@@ -82,7 +82,7 @@ parameters that did not converge.}
 }
 \value{
 An average treatment effect estimate with 'weights' and 'setup' attached as attributes.
-'weights' contains the estimated weights lambda and omega and corresponding intercepts, as well as regression coefficients beta if X is passed.
+'weights' contains the estimated weights lambda and omega, as well as regression coefficients beta if X is passed.
 'setup' is a list describing the problem passed in: Y, N0, T0, X.
 If estimate_se = TRUE, attributes 'se', 'se_method', and 'se_status' reflect the requested standard error computation.
 }

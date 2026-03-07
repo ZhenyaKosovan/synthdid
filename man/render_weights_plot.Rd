@@ -4,10 +4,13 @@
 \alias{render_weights_plot}
 \title{Render a weights plot}
 \usage{
-render_weights_plot(spec)
+render_weights_plot(spec, subtype = "omega")
 }
 \arguments{
 \item{spec}{A plot spec from build_plot_spec with type="weights"}
+
+\item{subtype}{"omega" (default), "lambda", "cumulative", or "both".
+"both" combines omega lollipop and cumulative curve via patchwork.}
 }
 \value{
 A ggplot2 object

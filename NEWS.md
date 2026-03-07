@@ -4,8 +4,7 @@
 
 ### Modern Formula Interface
 
-* **NEW**: Introduced formula-based interface similar to `lm()`, `plm()`, and `glm()` (#PR)
-  - Use `synthdid(outcome ~ treatment, data, index)` syntax
+* **NEW**: Introduced formula-based interface similar to `lm()`, `plm()`, and `glm()`   - Use `synthdid(outcome ~ treatment, data, index)` syntax
   - Automatically handles panel data conversion from long format
   - Returns rich model objects with standard R methods
 
@@ -43,8 +42,7 @@
 
 ### Automatic Thread Management for Parallel Processing
 
-* **NEW**: Automatic BLAS thread management prevents thread oversubscription (#PR)
-  - Detects when `future::plan()` is set to parallel mode
+* **NEW**: Automatic BLAS thread management prevents thread oversubscription   - Detects when `future::plan()` is set to parallel mode
   - Automatically sets BLAS to single-threaded mode for each worker
   - Restores original BLAS threads after completion
   - **Result**: 3-7x parallel speedup (vs 1.5x without thread management)
@@ -274,14 +272,3 @@ result <- synthdid(PacksPerCapita ~ treated,
 * Support for time-varying covariates
 * Example datasets: `california_prop99`
 
----
-
-## Notes for Next Release
-
-### Before CRAN Submission
-
-- [ ] Final R CMD check (should show 2 acceptable NOTEs)
-- [ ] Test on multiple platforms (rhub, winbuilder)
-- [ ] Update installation instructions if needed
-- [ ] Create GitHub release
-- [ ] Update pkgdown website

@@ -535,7 +535,7 @@ confint.synthdid <- function(object, parm, level = 0.95, ...) {
     warning("Standard error not available; cannot compute confidence interval")
     return(matrix(c(NA, NA),
       nrow = 1, ncol = 2,
-      dimnames = list("treated", c("Lower", "Upper"))
+      dimnames = list("att", c("Lower", "Upper"))
     ))
   }
 
@@ -545,7 +545,7 @@ confint.synthdid <- function(object, parm, level = 0.95, ...) {
     Lower = tau - z * se,
     Upper = tau + z * se
   )
-  rownames(ci) <- "treated"
+  rownames(ci) <- "att"
 
   ci
 }
@@ -688,12 +688,11 @@ predict.synthdid <- function(object,
 
   if (type == "counterfactual") {
     # What would have happened to treated units without treatment?
-    synthetic_control <- t(weights$omega) %*% (Y[1:N0, ] - X.beta[1:N0, ])
-    counterfactual <- matrix(synthetic_control,
+    synthetic_control <- as.numeric(t(weights$omega) %*% (Y[1:N0, ] - X.beta[1:N0, ]))
+    counterfactual <- matrix(rep(synthetic_control, each = N1),
       nrow = N1,
-      ncol = ncol(Y),
-      byrow = TRUE
-    ) + X.beta[(N0 + 1):nrow(Y), ]
+      ncol = ncol(Y)
+    ) + X.beta[(N0 + 1):nrow(Y), , drop = FALSE]
     rownames(counterfactual) <- rownames(Y)[(N0 + 1):nrow(Y)]
     colnames(counterfactual) <- colnames(Y)
     return(counterfactual)

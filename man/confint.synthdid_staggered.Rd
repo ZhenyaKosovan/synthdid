@@ -4,7 +4,7 @@
 \alias{confint.synthdid_staggered}
 \title{Confidence intervals for synthdid_staggered}
 \usage{
-\method{confint}{synthdid_staggered}(object, parm, level = 0.95, ...)
+\method{confint}{synthdid_staggered}(object, parm = NULL, level = 0.95, ...)
 }
 \arguments{
 \item{object}{A synthdid_staggered object}
