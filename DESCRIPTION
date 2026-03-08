@@ -21,7 +21,7 @@ Imports:
     utils,
     graphics,
     methods,
-    ggplot2,
+    ggplot2 (>= 3.4.0),
     grid,
     furrr,
     future,
@@ -37,6 +37,7 @@ RoxygenNote: 7.3.3
 Suggests:
     testthat (>= 3.0.0),
     CVXR,
+    ECOSolveR,
     bench,
     knitr,
     rmarkdown,

@@ -4,10 +4,13 @@
 \alias{render_trajectory_plot}
 \title{Render a trajectory plot}
 \usage{
-render_trajectory_plot(spec)
+render_trajectory_plot(spec, show_gap = FALSE)
 }
 \arguments{
 \item{spec}{A plot spec from build_plot_spec with type="trajectory"}
+
+\item{show_gap}{If TRUE, add a gap (treated - synthetic) sub-panel below.
+Requires the patchwork package.}
 }
 \value{
 A ggplot2 object

@@ -44,7 +44,7 @@ sparsify_function <- function(v) {
 #' @param suppress_convergence_warning Logical. If FALSE raise the warning flag for
 #' parameters that did not converge.
 #' @return An average treatment effect estimate with 'weights' and 'setup' attached as attributes.
-#'   'weights' contains the estimated weights lambda and omega and corresponding intercepts, as well as regression coefficients beta if X is passed.
+#'   'weights' contains the estimated weights lambda and omega, as well as regression coefficients beta if X is passed.
 #'   'setup' is a list describing the problem passed in: Y, N0, T0, X.
 #'   If estimate_se = TRUE, attributes 'se', 'se_method', and 'se_status' reflect the requested standard error computation.
 #' @examples
@@ -99,7 +99,7 @@ synthdid_estimate <- function(Y, N0, T0, X = array(dim = c(dim(Y), 0)),
     stop("Missing values in input data.")
   }
   if (any(is.infinite(Y))) {
-    stop("Infinite values in input dat.a")
+    stop("Infinite values in input data.")
   }
   if (max.iter < 0) {
     stop("max.iter should be positive scalar.")
@@ -112,6 +112,9 @@ synthdid_estimate <- function(Y, N0, T0, X = array(dim = c(dim(Y), 0)),
   )
   if (length(dim(X)) == 2) {
     dim(X) <- c(dim(X), 1)
+  }
+  if (is.null(weights$beta)) {
+    weights$beta <- numeric(0)
   }
   if (is.null(noise.level)) {
     if (T0 < 2 || N0 < 1) {

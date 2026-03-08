@@ -16,15 +16,11 @@ permissions:
   id-token: write
 
 jobs:
-  pkgdown:
+  pkgdown-build:
     runs-on: ubuntu-latest
-    # Only restrict concurrency for non-PR jobs
     concurrency:
       group: pkgdown-${{ github.event_name != 'pull_request' || github.run_id }}
       cancel-in-progress: false
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
     env:
       GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
     steps:
@@ -50,21 +46,20 @@ jobs:
         run: pkgdown::build_site_github_pages(new_process = FALSE, install = FALSE)
         shell: Rscript {0}
 
-      - name: Configure GitHub Pages
-        if: github.event_name != 'pull_request'
-        uses: actions/configure-pages@v5
-
-      - name: Disable Jekyll
-        if: github.event_name != 'pull_request'
-        run: touch docs/.nojekyll
-
       - name: Upload Pages artifact
         if: github.event_name != 'pull_request'
         uses: actions/upload-pages-artifact@v3
         with:
           path: docs
 
-      - name: Deploy to GitHub Pages 🚀
+  pkgdown-deploy:
+    if: github.event_name != 'pull_request'
+    needs: pkgdown-build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
         id: deployment
-        if: github.event_name != 'pull_request'
         uses: actions/deploy-pages@v4

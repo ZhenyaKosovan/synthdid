@@ -21,7 +21,7 @@ simplex.least.squares =  function(A, b, zeta = 0, intercept = FALSE) {
 	objective = sum((A %*% x - b)^2) + zeta^2 * length(b) * sum(x^2)
     }
     cvx.problem = CVXR::Problem(CVXR::Minimize(objective), constraints)
-    cvx.output = CVXR::solve(cvx.problem, solver = 'ECOS')
+    cvx.output = CVXR::psolve(cvx.problem, solver = 'ECOS')
     as.numeric(cvx.output$getValue(x))
 }
 

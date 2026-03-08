@@ -9,7 +9,9 @@
   type = "trajectory",
   mode = "auto",
   top_k = NULL,
+  subtype = "both",
   include_controls = FALSE,
+  show_gap = FALSE,
   ...
 )
 }
@@ -17,15 +19,21 @@
 \item{x}{The object to plot}
 
 \item{type}{Plot type: \code{"trajectory"} (default), \code{"weights"},
-or \code{"effect"}.}
+\code{"effect"}, or \code{"diagnostic"}.}
 
 \item{mode}{Display mode: \code{"auto"} (default, picks based on panel
 size), \code{"full"}, or \code{"top_k"}.}
 
 \item{top_k}{Number of top-weighted control units to show in top_k mode.}
 
+\item{subtype}{For diagnostic plots: \code{"both"} (default),
+\code{"convergence"}, or \code{"fit"}.}
+
 \item{include_controls}{Logical; if TRUE, show individual control unit
 trajectories behind the synthetic control line.}
+
+\item{show_gap}{Logical; if TRUE, add a gap (treated - synthetic)
+sub-panel below the trajectory plot. Requires patchwork.}
 
 \item{...}{Additional arguments. If any legacy argument names are detected,
 the call is forwarded to \code{synthdid_plot()}.}

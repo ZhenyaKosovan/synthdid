@@ -61,7 +61,7 @@ coef.synthdid_staggered <- function(object, type = c("aggregate", "cohort"), ...
 #' @param ... Additional arguments (currently ignored)
 #' @return A matrix with lower and upper confidence bounds
 #' @export
-confint.synthdid_staggered <- function(object, parm, level = 0.95, ...) {
+confint.synthdid_staggered <- function(object, parm = NULL, level = 0.95, ...) {
   tau <- object$att
   se <- attr(object, "se")
 
@@ -245,7 +245,7 @@ plot.synthdid_staggered <- function(x,
   if (type %in% c("cohort", "event")) {
     lifecycle::deprecate_soft(
       "2.0.0",
-      'plot.synthdid_staggered(type = "must be effect/trajectory/weights")',
+      'plot.synthdid_staggered(type = "cohort/event")',
       details = paste0(
         'Use type = "effect", subtype = "', type, '" instead of type = "', type, '".'
       )
@@ -257,58 +257,3 @@ plot.synthdid_staggered <- function(x,
   synthdid_render_plot(x, type = type, mode = mode, subtype = subtype, ...)
 }
 
-
-#' Cohort-level bar plot for staggered SDID
-#' @param object A synthdid_staggered object
-#' @return A ggplot2 object
-#' @keywords internal
-plot_staggered_cohort <- function(object) {
-  ce <- object$cohort_effects
-  ce$cohort_label <- factor(
-    paste0("t=", ce$cohort_time),
-    levels = paste0("t=", sort(ce$cohort_time))
-  )
-
-  p <- ggplot2::ggplot(ce, ggplot2::aes(x = cohort_label, y = estimate)) +
-    ggplot2::geom_col(ggplot2::aes(alpha = weight), fill = "steelblue") +
-    ggplot2::geom_hline(yintercept = object$att, linetype = 2, color = "red",
-                        linewidth = 0.7) +
-    ggplot2::annotate("text", x = Inf, y = object$att,
-                      label = paste("ATT =", format(object$att, digits = 3)),
-                      hjust = 1.1, vjust = -0.5, color = "red", size = 3.5) +
-    ggplot2::scale_alpha_continuous(range = c(0.4, 1), guide = "none") +
-    ggplot2::labs(
-      x = "Adoption Cohort",
-      y = "Treatment Effect",
-      title = "Staggered SDID: Cohort-Level Effects"
-    ) +
-    ggplot2::theme_light()
-
-  p
-}
-
-
-#' Event-study plot for staggered SDID
-#' @param object A synthdid_staggered object
-#' @return A ggplot2 object
-#' @keywords internal
-plot_staggered_event <- function(object) {
-  event_data <- stats::predict(object, type = "event")
-  event_data$cohort_label <- factor(paste0("t=", event_data$cohort_time))
-
-  p <- ggplot2::ggplot(event_data,
-                       ggplot2::aes(x = relative_time, y = effect,
-                                    color = cohort_label)) +
-    ggplot2::geom_line(linewidth = 0.7) +
-    ggplot2::geom_point(size = 2) +
-    ggplot2::geom_hline(yintercept = 0, linetype = 2, color = "grey50") +
-    ggplot2::labs(
-      x = "Periods Since Treatment",
-      y = "Treatment Effect",
-      color = "Cohort",
-      title = "Staggered SDID: Event Study"
-    ) +
-    ggplot2::theme_light()
-
-  p
-}

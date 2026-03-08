@@ -129,7 +129,7 @@ test_that("formula interface confint method works", {
   expect_equal(nrow(ci), 1)
   expect_equal(ncol(ci), 2)
   expect_equal(colnames(ci), c("Lower", "Upper"))
-  expect_equal(rownames(ci), "treated")
+  expect_equal(rownames(ci), "att")
 })
 
 test_that("formula interface without index uses first two columns", {
